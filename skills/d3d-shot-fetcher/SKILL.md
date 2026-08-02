@@ -22,19 +22,29 @@ broadband, ...). This skill (below) is for `efit01` and other scalar/profile tre
 
 ## Execution rule
 
-Every Python script that fetches DIII-D data must be run with this exact shell command:
+Every Python script that fetches DIII-D data must be run with:
 
 ```
-PATH=/opt/conda/bin:$PATH /opt/conda/bin/fdp run /opt/conda/bin/python script.py
+fdp run python script.py
 ```
 
-This is the only working invocation. All other forms fail silently and return 0 shots:
-- `python script.py` — fails
-- `/opt/conda/bin/python script.py` — fails
+**Do not hardcode an absolute path to `fdp` or `python`** (e.g.
+`/opt/conda/bin/fdp`) -- verified 2026-08-02: this environment's real
+`fdp`/`python` location varies (`/opt/conda/bin/` in the JupyterHub/Docker
+image, `/usr/local/bin/` on Colab under `condacolab`), and a script hardcoded
+to one breaks on the other with confusing errors (wrong interpreter, missing
+`toksearch`) that cost several debugging turns to diagnose live. Plain
+`fdp run python script.py`, relying on normal `PATH` resolution, has been
+verified end-to-end (real data, correct values) on BOTH environments -- use
+it exactly as written, no absolute paths.
+
+This is the only working invocation shape. All other forms fail silently and
+return 0 shots:
+- `python script.py` — fails (skips fdp's environment setup entirely)
 - `fdp python script.py` — fails (old fdp CLI form; `fdp` is now a subcommand CLI, `run` is required)
 - setting env vars manually and calling python — fails
 
-When writing an execute call, always use the full command above. Never deviate from it.
+When writing an execute call, always use `fdp run python script.py`. Never deviate from it.
 
 **Exception -- interactive charts (Plotly / ipywidgets):** an interactive chart
 must render in the notebook, so run that script IN-KERNEL with plain
@@ -71,6 +81,14 @@ Common `efit01` signals:
 The `fetch_dataset` + `\psirz` anchor pattern below is specific to `efit01`. For
 other trees (e.g. `spectroscopy`), a plain `MdsSignal(expr, tree)` fetch with
 `compute_serial()` works fine -- see the `d3d-filterscopes` skill.
+
+**Plot titles/labels: don't wrap a signal's backslash-prefixed name in
+matplotlib mathtext.** Every signal name in this skill starts with `\` (e.g.
+`\ipmhd`). Putting one inside `$...$` (mathtext, e.g. `f"...($\\{name}$)"`)
+makes matplotlib try to parse it as a LaTeX command and it can crash on a
+malformed one (verified 2026-08-02, cost a live debugging round-trip). Use
+the signal name as plain text in titles/labels -- it doesn't need to render
+as math.
 
 ## The `d3d` master tree -- read this before concluding a signal doesn't exist
 
@@ -181,7 +199,7 @@ if __name__ == "__main__":
 
 Run this script with:
 ```
-PATH=/opt/conda/bin:$PATH /opt/conda/bin/fdp run /opt/conda/bin/python script.py
+fdp run python script.py
 ```
 
 Expected output:
@@ -190,6 +208,14 @@ Got 2 shots
 Shot 188702: kappa 1.305 - 1.908, 314 time points
 Shot 191744: kappa 1.426 - 1.950, 254 time points
 ```
+
+**Don't re-check for errors inside the `for res in results:` loop -- the
+`@pipe.where` filter above already removed error records, `results` only
+contains clean ones.** If you do add your own extra check anyway, `res` is a
+`Record`-like object, not a plain dict: use `res.errors` (attribute access,
+same as the filter above), never `res.get("errors")` -- `Record` has no
+`.get()` method and that call fails at runtime (verified 2026-08-02, cost a
+live debugging round-trip fixing exactly this).
 
 ## Accessing fetched data
 
@@ -236,7 +262,7 @@ if __name__ == "__main__":
 
 Run with:
 ```
-PATH=/opt/conda/bin:$PATH /opt/conda/bin/fdp run /opt/conda/bin/python script.py
+fdp run python script.py
 ```
 
 ## PTDATA access
