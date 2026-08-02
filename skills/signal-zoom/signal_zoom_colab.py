@@ -118,6 +118,14 @@ def plot_signal_zoom(times=None, data=None, title="Signal", y_label="",
     variable.
     """
     import plotly.graph_objects as go
+    import plotly.io as pio
+
+    # Colab's notebook frontend needs the renderer set explicitly -- without
+    # this, display(fig) doesn't error, it just silently produces output
+    # Colab's frontend can't render (verified 2026-08-02: a real chart request
+    # completed with no traceback anywhere, and no chart ever appeared --
+    # every output block was under 1.1KB; a real rendered chart is 200KB+).
+    pio.renderers.default = "colab"
 
     if series is None:
         if times is None or data is None:
@@ -145,8 +153,12 @@ def plot_signal_zoom(times=None, data=None, title="Signal", y_label="",
     try:
         from IPython.display import display
         display(fig)
-    except Exception:
-        pass
+    except Exception as e:
+        # Never swallow this silently -- a silent failure here means "no
+        # chart, no error, no clue why" (verified 2026-08-02: this exact
+        # bare except hid a real render failure with zero trace of what went
+        # wrong). Print so a failure is at least visible and debuggable.
+        print(f"plot_signal_zoom: display(fig) failed: {type(e).__name__}: {e}")
     return fig
 
 

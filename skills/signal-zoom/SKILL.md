@@ -47,6 +47,16 @@ Step 2 never imports toksearch/MDSplus -- only numpy/plotly, which the
 kernel's own numpy (2.0.2, otherwise fine) handles without issue. This is why
 splitting the steps works even though in-kernel toksearch cannot.
 
+**Also fixed (verified 2026-08-02): Colab's frontend needs Plotly's renderer
+set explicitly, or the chart silently doesn't render at all.** A first version
+of this skill ran with no errors anywhere, reported "the chart is now
+displayed," and produced nothing -- confirmed by checking output size (under
+1.1KB; a real rendered chart is 200KB+). `plot_signal_zoom()` now sets
+`plotly.io.renderers.default = "colab"` before calling `display()`. If a
+chart still doesn't appear, check the output for a printed
+`plot_signal_zoom: display(fig) failed: ...` line -- the old silent
+`except: pass` that hid this is now a visible print instead.
+
 ## Import the helper
 
 ```python
