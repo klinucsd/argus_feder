@@ -3,11 +3,19 @@
 Local SQLite file -- no network, no fdp wrapper needed. Read-only: this is
 reference data supplied by GA, never written to.
 
-The file is looked up in this order:
-  1. $D3DRDB_PATH (explicit override)
-  2. ~/work/_User-Persistent-Storage_CephBlock_/feder/d3drdb.sqlite  (NRP persistent -- primary)
-  3. ~/feder_data/d3drdb_demo.sqlite                                (local dev)
-  4. ~/d3drdb_demo.sqlite                                           (simple fallback)
+The file is looked up in each of these folders, in order, under EITHER
+filename (`d3drdb.sqlite` or `d3drdb_demo.sqlite`) -- verified 2026-08-02:
+different real deployments have used different filenames in different
+folders (JupyterHub/NRP: `d3drdb.sqlite`; this dev machine:
+`d3drdb_demo.sqlite`), and checking only one filename per folder caused a
+real "file not found" that cost a rename to work around. Checking both
+everywhere removes that trap entirely:
+  1. $D3DRDB_PATH (explicit override -- exact file, not a folder)
+  2. ~/work/_User-Persistent-Storage_CephBlock_/feder/  (NRP persistent -- primary)
+  3. ~/feder_data/                                      (local dev)
+  4. ~                                                   (simple fallback)
+  5. /content/drive/MyDrive/argus_feder/                 (Colab -- user's own private Drive; Colab's
+                                                           local disk does not survive a session)
 
 Contents: SHOTS, SHOTS_TYPE, SUMMARIES (already filtered to plasma-type shots
 only) + SIGNAL_NAMES, SIGNAL_INFO (catalog tables, not shot-specific). The two
@@ -17,6 +25,14 @@ disruption labels come from a separate labels store, not from here.
 import os
 import sqlite3
 
+_FOLDERS = [
+    "~/work/_User-Persistent-Storage_CephBlock_/feder",
+    "~/feder_data",
+    "~",
+    "/content/drive/MyDrive/argus_feder",
+]
+_FILENAMES = ["d3drdb.sqlite", "d3drdb_demo.sqlite"]
+
 
 def locate_d3drdb():
     """Return the path to the d3drdb sqlite file, or None if not found anywhere."""
@@ -24,11 +40,9 @@ def locate_d3drdb():
     env_path = os.environ.get("D3DRDB_PATH")
     if env_path:
         candidates.append(env_path)
-    candidates += [
-        os.path.expanduser("~/work/_User-Persistent-Storage_CephBlock_/feder/d3drdb.sqlite"),
-        os.path.expanduser("~/feder_data/d3drdb_demo.sqlite"),
-        os.path.expanduser("~/d3drdb_demo.sqlite"),
-    ]
+    for folder in _FOLDERS:
+        for fname in _FILENAMES:
+            candidates.append(os.path.expanduser(f"{folder}/{fname}"))
     for p in candidates:
         if p and os.path.exists(p):
             return p
@@ -38,12 +52,16 @@ def locate_d3drdb():
 def _connect():
     path = locate_d3drdb()
     if not path:
+        searched = ", ".join(
+            os.path.expanduser(f"{folder}/{{{'|'.join(_FILENAMES)}}}") for folder in _FOLDERS
+        )
         raise FileNotFoundError(
-            "d3drdb file not found. Searched $D3DRDB_PATH, "
-            "~/work/_User-Persistent-Storage_CephBlock_/feder/d3drdb.sqlite, "
-            "~/feder_data/d3drdb_demo.sqlite, ~/d3drdb_demo.sqlite.\n"
-            "Fix: upload d3drdb_demo.sqlite to "
-            "~/work/_User-Persistent-Storage_CephBlock_/feder/d3drdb.sqlite"
+            f"d3drdb file not found. Searched $D3DRDB_PATH, then {searched}.\n"
+            "Fix: place your copy of the file (either name, "
+            f"{' or '.join(_FILENAMES)}) in any of those folders -- on "
+            "Colab, mount your Google Drive and put it at "
+            "/content/drive/MyDrive/argus_feder/ (Colab's local disk does "
+            "not survive a session, Drive does)."
         )
     # Read-only: this is GA's reference data, never write to it.
     return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
