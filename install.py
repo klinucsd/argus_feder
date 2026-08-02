@@ -13,6 +13,7 @@ what's wrong -- no silent failures.
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -21,6 +22,18 @@ REPO_RAW = "https://raw.githubusercontent.com/klinucsd/argus_feder/main"
 
 def _step(msg):
     print(f"  • {msg}")
+
+
+def _run_with_heartbeat(cmd, heartbeat_secs=10):
+    """Run cmd, printing a '.' roughly every heartbeat_secs so a slow step
+    (mamba installs can take over a minute) never looks like it died."""
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    while proc.poll() is None:
+        time.sleep(heartbeat_secs)
+        print(".", end="", flush=True)
+    print()
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
 
 
 print("Setting up ARGUS-FEDER...")
@@ -39,18 +52,18 @@ except ImportError:
             "above FIRST (it restarts your session once) before running "
             "this cell."
         )
-    _step("Installing DIII-D data access (~1-2 min, one-time)...")
+    _step("Installing DIII-D data access (~1-2 min, one-time)")
     # fdp installed as its OWN step, after toksearch/fdp-d3d: combining all three
     # in one `mamba install` non-deterministically keeps the old fdp-d3d wrapper
     # instead of the real fdp CLI. Verified 2026-08-01/02 -- keep this split.
-    subprocess.check_call(
+    print("    ", end="", flush=True)
+    _run_with_heartbeat(
         ["mamba", "install", "-y", "-q", "-c", "ga-fdp", "-c", "conda-forge",
-         "toksearch", "fdp-d3d"],
-        stdout=subprocess.DEVNULL,
+         "toksearch", "fdp-d3d"]
     )
-    subprocess.check_call(
-        ["mamba", "install", "-y", "-q", "-c", "ga-fdp", "-c", "conda-forge", "fdp"],
-        stdout=subprocess.DEVNULL,
+    print("    ", end="", flush=True)
+    _run_with_heartbeat(
+        ["mamba", "install", "-y", "-q", "-c", "ga-fdp", "-c", "conda-forge", "fdp"]
     )
 _step("DIII-D data access ready")
 
@@ -79,7 +92,7 @@ _step("Pelican token loaded")
 # ---------------------------------------------------------------------------
 # Step 3: ARGUS agent
 # ---------------------------------------------------------------------------
-_step("Installing the ARGUS agent...")
+_step("Installing the ARGUS agent (~1 min the first time)")
 exec(
     urllib.request.urlopen(
         "https://raw.githubusercontent.com/klinucsd/sage/main/argus_colab/install.py"
