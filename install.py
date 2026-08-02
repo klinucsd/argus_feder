@@ -107,6 +107,7 @@ skills_dir = Path.home() / ".deepagents" / "agent" / "skills"
 for skill_name, files in {
     "d3d-shot-fetcher": ["SKILL.md"],
     "d3d-relational-db": ["SKILL.md", "d3d_relational_db.py"],
+    "signal-zoom": ["SKILL.md", "signal_zoom_colab.py"],
 }.items():
     dest = skills_dir / skill_name
     dest.mkdir(parents=True, exist_ok=True)
