@@ -20,6 +20,29 @@ the tags ending in `DA` that resolve to `FILTERSCOPE.PMT##:PHOTON_FLUX` — NOT 
 full set of PMT channels (those span many spectral lines: C-II, C-III, He,
 broadband, ...). This skill (below) is for `efit01` and other scalar/profile trees.
 
+## First: "what WAS X for shot Y" (a single number, not a time series) -- check d3d-relational-db first
+
+If the request asks for a single summary value per shot -- "what WAS the
+elongation," "what WAS the peak plasma current" -- rather than "plot ...
+versus time" or "how does X vary during the discharge," check
+`d3d-relational-db`'s `shot_summary()` FIRST, not this skill. It's a local
+SQLite lookup (no Pelican/MDSplus fetch needed) and is exactly what it's
+built for -- see its own "SUMMARIES gives ONE scalar per shot" note. Only
+fetch the raw MDSplus signal here if `d3d-relational-db` doesn't have the
+file, doesn't cover the specific quantity asked for, or the request
+genuinely wants the full time-resolved trace.
+
+**Verified 2026-08-02: this routing choice is NOT reliable without this
+rule.** The exact same question ("what was shot 190000's elongation and peak
+plasma current") was answered two different ways on two different runs --
+once correctly via `d3d-relational-db` (one query, fast), once by skipping
+straight to a raw `efit01` fetch here (confirmed via full-text search of
+that run's transcript: `d3d-relational-db` was never even read). Both runs
+landed on the same correct numbers, so this isn't a correctness bug, but the
+raw-fetch path took 4x longer (multiple edit-and-retry cycles) for a question
+the database answers in one query -- unnecessary cost, and inconsistent
+behavior for what should be the same answer every time.
+
 ## Execution rule
 
 Every Python script that fetches DIII-D data must be run with:
@@ -158,6 +181,22 @@ from the tag name alone.** Verification discipline applies to everything
 stated in the answer, not only to the part that was explicitly asked for --
 a domain scientist reading the answer can't tell which parts were "the
 question" and which were bonus context, and will trust both equally.
+
+## Two small code-writing gotchas (verified 2026-08-02)
+
+- **Use raw strings for backslash-prefixed signal names EVERYWHERE, not just
+  inside `MdsSignal(...)`.** A plain (non-raw) docstring or comment like
+  `"""Fetch \kappa and \ipmhd from efit01..."""` triggers a Python
+  `SyntaxWarning: invalid escape sequence` (harmless for `\k`/`\i` here, but
+  the same mistake with a signal name like `\normal` would silently become a
+  newline + "ormal" -- `\n` IS a real escape sequence). Use `r"""..."""` for
+  any docstring/comment/string that contains a signal name, the same way
+  `MdsSignal` arguments already do.
+- **`Record.get()` needs an explicit default argument** -- unlike a plain
+  dict's `.get(key)` (which defaults to `None`), `Record.get(key)` alone can
+  error; always call it as `rec.get(key, None)` (or whatever default fits).
+  This is separate from the `res.errors` vs `res.get("errors")` mistake
+  above -- both are real, both have been hit live.
 
 ## Required code pattern
 
