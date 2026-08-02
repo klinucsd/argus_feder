@@ -32,16 +32,21 @@ fetch the raw MDSplus signal here if `d3d-relational-db` doesn't have the
 file, doesn't cover the specific quantity asked for, or the request
 genuinely wants the full time-resolved trace.
 
-**Verified 2026-08-02: this routing choice is NOT reliable without this
-rule.** The exact same question ("what was shot 190000's elongation and peak
-plasma current") was answered two different ways on two different runs --
-once correctly via `d3d-relational-db` (one query, fast), once by skipping
-straight to a raw `efit01` fetch here (confirmed via full-text search of
-that run's transcript: `d3d-relational-db` was never even read). Both runs
-landed on the same correct numbers, so this isn't a correctness bug, but the
-raw-fetch path took 4x longer (multiple edit-and-retry cycles) for a question
-the database answers in one query -- unnecessary cost, and inconsistent
-behavior for what should be the same answer every time.
+**Verified 2026-08-02, and worth being precise about what was actually
+wrong here -- neither answer was incorrect.** The exact same question ("what
+was shot 190000's elongation and peak plasma current") got two different,
+both LEGITIMATE answers on two different runs: via `d3d-relational-db`,
+kappa=1.711 (one scalar) and peak Ip=0.911 MA; via a raw `efit01` fetch here,
+kappa ranged 1.08-1.83 across the discharge and peak Ip=0.896 MA (1.7%
+different from the database value) -- `SUMMARIES.ipmax` is a separately
+computed/stored database value, not the same thing as the raw `\ipmhd`
+trace's own empirical max; they're close because they describe the same
+physical event through different pipelines, not because either is wrong.
+This rule exists for CONSISTENCY and SPEED (one cheap query beats several
+Pelican fetches and edit-retry cycles for a question this database already
+answers), not because the raw-fetch path was incorrect -- don't frame it that
+way in a final answer either; if both numbers are ever shown together, say
+they're two valid measurements of the same quantity, not that one is right.
 
 ## Execution rule
 
