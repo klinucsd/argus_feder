@@ -14,8 +14,17 @@ everywhere removes that trap entirely:
   2. ~/work/_User-Persistent-Storage_CephBlock_/feder/  (NRP persistent -- primary)
   3. ~/feder_data/                                      (local dev)
   4. ~                                                   (simple fallback)
-  5. /content/drive/MyDrive/argus_feder/                 (Colab -- user's own private Drive; Colab's
-                                                           local disk does not survive a session)
+  5. /content/                                           (Colab -- upload via the file browser)
+
+On Colab, deliberately upload-only, NOT Google Drive: a Drive mount asks for
+a broad OAuth consent grant (real Colab UX, tried 2026-08-02: it also just
+failed there with "credential propagation was unsuccessful", a known
+flakiness point) -- too high-friction/alarming a first impression for a
+domain scientist. Plain upload to `/content/` via the Colab file browser
+needs zero code and is immediately found here. Tradeoff accepted: `/content/`
+does not survive a session restart, so this needs re-uploading each fresh
+Colab session -- deliberately chosen over Drive's persistence for the
+simpler, less scary flow.
 
 Contents: SHOTS, SHOTS_TYPE, SUMMARIES (already filtered to plasma-type shots
 only) + SIGNAL_NAMES, SIGNAL_INFO (catalog tables, not shot-specific). The two
@@ -29,7 +38,7 @@ _FOLDERS = [
     "~/work/_User-Persistent-Storage_CephBlock_/feder",
     "~/feder_data",
     "~",
-    "/content/drive/MyDrive/argus_feder",
+    "/content",
 ]
 _FILENAMES = ["d3drdb.sqlite", "d3drdb_demo.sqlite"]
 
@@ -59,9 +68,9 @@ def _connect():
             f"d3drdb file not found. Searched $D3DRDB_PATH, then {searched}.\n"
             "Fix: place your copy of the file (either name, "
             f"{' or '.join(_FILENAMES)}) in any of those folders -- on "
-            "Colab, mount your Google Drive and put it at "
-            "/content/drive/MyDrive/argus_feder/ (Colab's local disk does "
-            "not survive a session, Drive does)."
+            "Colab, upload it via the file browser (folder icon, left "
+            "sidebar); it lands at /content/ automatically, no code needed. "
+            "Note this must be re-uploaded each fresh Colab session."
         )
     # Read-only: this is GA's reference data, never write to it.
     return sqlite3.connect(f"file:{path}?mode=ro", uri=True)

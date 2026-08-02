@@ -221,9 +221,9 @@ truly gap-free, list the shots individually instead of compressing them.
 
 `query_d3drdb()` raises `FileNotFoundError` with the exact folders it
 searched and the fix. It checks several folders (NRP persistent storage,
-`~/feder_data`, plain `~`, and on Colab a private Google Drive mount at
-`/content/drive/MyDrive/argus_feder`) and, in each one, either filename
-(`d3drdb.sqlite` or `d3drdb_demo.sqlite`) -- both work everywhere, so don't
-rename the file to "fix" a not-found error, just place it in one of the
-listed folders. Surface the raised error message to the user rather than
+`~/feder_data`, plain `~`, and on Colab plain `/content/` -- upload via the
+file browser, no Drive mount needed or supported) and, in each one, either
+filename (`d3drdb.sqlite` or `d3drdb_demo.sqlite`) -- both work everywhere,
+so don't rename the file to "fix" a not-found error, just place it in one of
+the listed folders. Surface the raised error message to the user rather than
 guessing an answer.
