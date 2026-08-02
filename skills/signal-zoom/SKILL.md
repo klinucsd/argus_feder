@@ -21,6 +21,15 @@ this skill -- produce a normal static image (matplotlib PNG) via `d3d-shot-fetch
 as usual. The interactive chart is opt-in via the trigger term; static image is
 the default.
 
+This applies even when an interactive chart seems like it would be nice
+unprompted "bonus" value -- e.g. after computing an aggregate result across
+many shots and wanting to visualize the winner. Don't reach for this skill
+just because a signal happens to be available or interesting to zoom into.
+Verified 2026-08-02: an aggregation-query request with no trigger word still
+triggered an unprompted attempt at this skill, which then failed to render
+silently -- wrong default and a silent failure, stacked. If a chart adds
+value but wasn't asked for as interactive, make it static instead.
+
 ## CRITICAL: this is a TWO-STEP pattern on Colab -- read before writing any script
 
 On the JupyterHub/Docker image, fetching and plotting can happen in one

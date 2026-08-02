@@ -48,6 +48,23 @@ answers), not because the raw-fetch path was incorrect -- don't frame it that
 way in a final answer either; if both numbers are ever shown together, say
 they're two valid measurements of the same quantity, not that one is right.
 
+## First: charts default to STATIC -- only go interactive if explicitly asked
+
+When a request calls for a plot/chart/show of a signal, default to a static
+image (matplotlib PNG, written to disk and displayed as usual). Do NOT add an
+interactive Plotly chart as unprompted "bonus" value -- even for a signal
+that would look good zoomed in. Only use the `signal-zoom` skill when the
+request itself contains an explicit trigger word: `zoomable`,
+`interactive chart`, `zoom-in chart`, `zoomable view`, `let me zoom in/out`,
+`HighCharts-style`, `HighStock-style`. No trigger word means static, full stop.
+
+**Verified 2026-08-02:** an aggregation-query request ("find the shot with
+the highest peak frequency...") contained no trigger word, yet still got an
+unprompted interactive-chart attempt -- which then failed to render (no
+chart, no error), on top of being the wrong default for that request in the
+first place. Static-by-default avoids both problems: it's cheaper, it always
+renders, and it matches what was actually asked for.
+
 ## Execution rule
 
 Every Python script that fetches DIII-D data must be run with:
@@ -74,13 +91,15 @@ return 0 shots:
 
 When writing an execute call, always use `fdp run python script.py`. Never deviate from it.
 
-**Exception -- interactive charts (Plotly / ipywidgets):** an interactive chart
-must render in the notebook, so run that script IN-KERNEL with plain
-`python /path/to/script.py` (NOT the fdp wrapper -- fdp is a subprocess and cannot
-render interactive output). In-kernel scripts inherit the kernel's Pelican
-environment, so TokSearch fetches still work. See the `signal-zoom` skill. This
-exception applies ONLY to interactive rendering; every other data script uses the
-fdp command above.
+**Exception -- interactive charts (Plotly / ipywidgets):** only applies when the
+request explicitly asked for one (see "First: charts default to STATIC" above).
+An interactive chart must render in the notebook, so run that script IN-KERNEL
+with plain `python /path/to/script.py` (NOT the fdp wrapper -- fdp is a
+subprocess and cannot render interactive output). In-kernel scripts inherit the
+kernel's Pelican environment, so TokSearch fetches still work. See the
+`signal-zoom` skill. This exception applies ONLY to interactive rendering when
+explicitly requested; every other chart is static and every other data script
+uses the fdp command above.
 
 ## Data access constraints
 
