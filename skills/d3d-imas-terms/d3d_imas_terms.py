@@ -47,6 +47,28 @@ def _norm(p: str) -> str:
     return re.sub(r"\[[^\]]*\]", "", (p or "").strip()).strip(".").lower()
 
 
+def _cocos_fields_for(transform: str | None) -> dict:
+    """The COCOS warning payload for a row. Single source of truth.
+
+    Verified 2026-08-03: this used to be inlined in `imas_to_d3d` only, so
+    `d3d_to_imas`/`search` returned `cocos_transform` but no `cocos_warning`.
+    A caller checking for the warning (as this skill's own example does) got a
+    false negative on exactly the fields the warning exists to protect. Every
+    function that returns a row must go through here.
+    """
+    if not transform:
+        return {}
+    return {
+        "cocos_transform": transform,
+        "cocos_meaning": COCOS_MEANING.get(transform, ""),
+        "cocos_warning": (
+            f"Sign convention differs: apply the {transform} COCOS transform. "
+            "Serving the raw DIII-D value under this IMAS name can be "
+            "sign-flipped."
+        ),
+    }
+
+
 def table_info() -> dict:
     """Provenance and coverage of the loaded table. Cite this, don't guess."""
     d = _load()
@@ -79,13 +101,7 @@ def imas_to_d3d(imas_path: str, shot: int | None = None,
             continue
         out = dict(row)
         out["imas_path"] = k
-        if out.get("cocos_transform"):
-            out["cocos_meaning"] = COCOS_MEANING.get(out["cocos_transform"], "")
-            out["cocos_warning"] = (
-                f"Sign convention differs: apply the {out['cocos_transform']} "
-                "COCOS transform. Serving the raw DIII-D value under this IMAS "
-                "name can be sign-flipped."
-            )
+        out.update(_cocos_fields_for(out.get("cocos_transform")))
         if shot is not None:
             ok = out.get("verified_on_shots") or []
             out["verified_for_shot"] = shot in ok
@@ -113,14 +129,17 @@ def d3d_to_imas(signal: str, tree: str | None = None) -> list[dict]:
         if tree and (row.get("tree") or "").lower() != tree.lower():
             continue
         if q and (q in p or (pt and q == pt) or p.endswith(q)):
-            hits.append({
+            hit = {
                 "imas_path": imas_path,
                 "mds_path": row.get("mds_path"),
                 "tree": row.get("tree"),
-                "cocos_transform": row.get("cocos_transform"),
                 "verified": row.get("verified"),
+                "verified_on_shots": row.get("verified_on_shots"),
+                "confidence": row.get("confidence"),
                 "ids": row.get("ids"),
-            })
+            }
+            hit.update(_cocos_fields_for(row.get("cocos_transform")))
+            hits.append(hit)
     return sorted(hits, key=lambda h: (not h["verified"], h["imas_path"]))
 
 
@@ -136,14 +155,17 @@ def search(term: str, limit: int = 20) -> list[dict]:
             imas_path, row.get("mds_path"), row.get("ptdata_pointname"),
             row.get("summary"), row.get("ids")) if x).lower()
         if q in hay:
-            hits.append({
+            hit = {
                 "imas_path": imas_path,
                 "mds_path": row.get("mds_path"),
                 "tree": row.get("tree"),
                 "ids": row.get("ids"),
                 "verified": row.get("verified"),
-                "cocos_transform": row.get("cocos_transform"),
-            })
+                "verified_on_shots": row.get("verified_on_shots"),
+                "confidence": row.get("confidence"),
+            }
+            hit.update(_cocos_fields_for(row.get("cocos_transform")))
+            hits.append(hit)
     hits.sort(key=lambda h: (not h["verified"], len(h["imas_path"])))
     return hits[:limit]
 
@@ -163,8 +185,8 @@ def cocos_fields() -> list[dict]:
     """Every field whose sign convention differs between DIII-D and IMAS."""
     d = _load()
     return [
-        {"imas_path": k, "cocos_transform": r["cocos_transform"],
-         "meaning": COCOS_MEANING.get(r["cocos_transform"], ""),
-         "mds_path": r.get("mds_path"), "verified": r.get("verified")}
+        {"imas_path": k, "mds_path": r.get("mds_path"),
+         "verified": r.get("verified"),
+         **_cocos_fields_for(r["cocos_transform"])}
         for k, r in d["imas_to_d3d"].items() if r.get("cocos_transform")
     ]

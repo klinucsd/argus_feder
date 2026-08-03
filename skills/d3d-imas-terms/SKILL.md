@@ -80,6 +80,23 @@ not in the table -- say exactly that. IMAS and DIII-D names are unrelated
 vocabularies; a DIII-D name cannot be guessed from an IMAS name or vice versa.
 Offer `search()` results instead.
 
+**1b. When the requested name is absent, do NOT claim a near-match is the same
+quantity.** Offering related rows is helpful; asserting equivalence is not.
+Verified 2026-08-03 on a real run: asked for `\ipmhd`, the answer correctly
+reported it absent, then stated `\ipmhd` and `CPASMA` "return identical values
+for the same shot." They do not. On shot 165340:
+
+| expression | resolves to | samples | min |
+|---|---|---|---|
+| `\ipmhd` | `\EFIT01::TOP.RESULTS.AEQDSK:IPMHD` | 311 | 2.9202e5 |
+| `\EFIT01::TOP.MEASUREMENTS.CPASMA` | `…MEASUREMENTS:CPASMA` | 315 | 2.718e5 |
+
+Different nodes, different lengths, different values -- one is the EFIT
+*measurement constraint*, the other the *fitted output*. (Confusingly there are
+two CPASMA nodes: `RESULTS.GEQDSK.CPASMA` does match `\ipmhd` exactly, while
+`MEASUREMENTS.CPASMA` -- the one this table maps -- does not.) Say "the table
+maps X, which is a related but distinct signal", never "they are the same".
+
 **2. Always surface the COCOS caution when present.** 22 fields carry a
 `cocos_transform`. DIII-D and IMAS use different sign/orientation conventions,
 so presenting a raw DIII-D value under the IMAS name can give a
