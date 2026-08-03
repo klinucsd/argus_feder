@@ -33,15 +33,20 @@ print(f"  verified {r['verified']} on shots {r['verified_on_shots']}")
 if r.get("cocos_warning"):
     print(f"  CAUTION  {r['cocos_warning']}")
 
-# 2. The other direction.
+# 2. The other direction. EVERY lookup path can carry a COCOS warning --
+#    print it here too, not just in the forward direction.
 print("\nDIII-D CPASMA is used by:")
 for h in d3d_to_imas("CPASMA")[:3]:
     print(f"  {h['imas_path']}")
+    if h.get("cocos_warning"):
+        print(f"     CAUTION {h['cocos_transform']}: {h['cocos_meaning']}")
 
 # 3. Free-text search when the exact IMAS path isn't known.
 print("\nsearch('elongation'):")
 for h in search("elongation", limit=3):
     print(f"  {h['imas_path']:52} -> {h['mds_path']}")
+    if h.get("cocos_warning"):
+        print(f"     CAUTION {h['cocos_transform']}: {h['cocos_meaning']}")
 
 # 4. Not in the table -> None. Say so; never invent a mapping.
 print("\nunknown:", imas_to_d3d("equilibrium.made_up_field"))
@@ -64,6 +69,7 @@ DIII-D CPASMA is used by:
   equilibrium._cpasma
   equilibrium._cpasma_cocos
   equilibrium.time_slice.constraints.ip.reconstructed
+     CAUTION TOR: toroidal quantity (includes plasma current)
 
 search('elongation'):
   equilibrium.time_slice.boundary_separatrix.elongation -> \EFIT01::TOP.RESULTS.AEQDSK.KAPPA
