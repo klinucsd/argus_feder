@@ -101,6 +101,12 @@ kernel's Pelican environment, so TokSearch fetches still work. See the
 explicitly requested; every other chart is static and every other data script
 uses the fdp command above.
 
+That in-kernel command must be BARE: an absolute script path with no `cd`, no
+`&&`, no pipes. A command containing any shell operator is NOT routed into the
+kernel -- it runs as a subprocess, where nothing can render, and it exits 0
+looking successful (verified 2026-08-02: `cd <dir> && python plot.py` produced
+no chart, no error, no warning).
+
 ## Data access constraints
 
 Data comes from the Pelican mirror. MDSplus tree paths for ALL DIII-D trees are

@@ -73,6 +73,26 @@ def fetch_signal_for_zoom(out_path, shots, expr, tree, names=None):
     return n_ok
 
 
+def _in_ipython_kernel():
+    """True only if we're running inside a live IPython KERNEL (not a subprocess).
+
+    An interactive chart can ONLY render from in-kernel code. ARGUS routes a
+    bare `python script.py` into the kernel via `get_ipython().run_cell`, but
+    any command containing a shell operator (`&&`, `|`, `>`, ...) is NOT
+    intercepted and runs as a genuine subprocess instead -- so a plot step
+    written as `cd somewhere && python plot.py` silently renders nothing.
+    See _SHELL_OPERATORS / _parse_python_invocation in sage_kernel_backend.py.
+    """
+    try:
+        from IPython import get_ipython
+        ip = get_ipython()
+    except Exception:
+        return False
+    # A plain `python` REPL/subprocess has no shell; a terminal IPython shell
+    # has one but no `.kernel`. Only a kernel can publish display output.
+    return ip is not None and getattr(ip, "kernel", None) is not None
+
+
 def _minmax_decimate(x, y, n_out):
     """Downsample to ~n_out points keeping each bin's min and max (in time order).
 
@@ -149,6 +169,29 @@ def plot_signal_zoom(times=None, data=None, title="Signal", y_label="",
         showlegend=len(series) > 1,
     )
     fig.update_xaxes(rangeslider_visible=True)
+
+    if not _in_ipython_kernel():
+        # Verified 2026-08-02: this is THE failure mode for this skill, and it
+        # is 100% silent without this check -- display() below does NOT raise
+        # in a subprocess, it just prints a repr, so the script exits 0 and
+        # looks successful while rendering nothing at all. Caught after a run
+        # whose plot step was `cd <dir> && python plot.py`: the `&&` makes
+        # ARGUS treat the whole thing as a shell command and run it in a
+        # subprocess instead of in the kernel.
+        print(
+            "ERROR: plot_signal_zoom is running in a SUBPROCESS, not the "
+            "notebook kernel -- the interactive chart CANNOT render from "
+            "here, and nothing was displayed.\n"
+            "  Cause: the plot step was almost certainly run with a shell "
+            "operator in the command (e.g. `cd <dir> && python plot.py`). "
+            "Any of && | ; > makes ARGUS run the command as a subprocess "
+            "instead of routing it into the kernel.\n"
+            "  Fix: re-run the plot step as a BARE python command with an "
+            "ABSOLUTE script path and no `cd`, e.g.\n"
+            "      python /full/path/to/plot_script.py\n"
+            "  (The fetch step is unaffected -- it SHOULD be a subprocess.)"
+        )
+        return fig
 
     try:
         from IPython.display import display

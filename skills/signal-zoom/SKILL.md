@@ -45,11 +45,11 @@ small `.npz` file:
 
 1. **Fetch (subprocess, uses toksearch/MDSplus):**
    ```
-   fdp run python fetch_script.py
+   fdp run python /abs/path/to/fetch_script.py
    ```
 2. **Plot (in-kernel, renders the chart):**
    ```
-   python plot_script.py
+   python /abs/path/to/plot_script.py
    ```
 
 Step 2 never imports toksearch/MDSplus -- only numpy/plotly, which the
@@ -65,6 +65,31 @@ displayed," and produced nothing -- confirmed by checking output size (under
 chart still doesn't appear, check the output for a printed
 `plot_signal_zoom: display(fig) failed: ...` line -- the old silent
 `except: pass` that hid this is now a visible print instead.
+
+## CRITICAL: the plot command must be BARE -- no `cd`, no `&&`, no pipes
+
+Write the plot step as a single bare `python /absolute/path/to/plot_script.py`
+and NOTHING else. Do NOT prefix it with `cd <dir> &&`. Do NOT pipe or redirect it.
+
+**Why this is not a style preference:** ARGUS only routes a command into the
+notebook kernel (where rendering is possible) if it parses as a simple
+`python <script>` invocation. A command containing ANY shell operator
+(`&&`, `|`, `;`, `>`, ...) is not intercepted at all -- it runs as a genuine
+subprocess, where an interactive chart can never render. The subprocess then
+exits 0 and looks completely successful.
+
+**Verified 2026-08-02, twice, and it is 100% silent:** a run whose plot step was
+`cd "<workspace>" && python plot_fs04_165920.py` produced no chart, no error,
+and no warning, while the agent reported "the chart rendered successfully."
+`display()` does not raise in a subprocess -- it just prints a repr -- so
+nothing anywhere indicates failure. `plot_signal_zoom()` now detects this case
+and prints a loud `ERROR: ... running in a SUBPROCESS ...` message telling you
+to re-run without the `cd`. **If you see that error, the fix is the command
+shape, not the code:** re-run the exact same script as a bare
+`python /abs/path/plot_script.py`.
+
+Use absolute paths everywhere (the `out_path` in step 1 and the script paths in
+both steps) so no `cd` is ever needed.
 
 ## Import the helper
 
@@ -88,7 +113,7 @@ fetch_signal_for_zoom(
     tree="spectroscopy",
 )
 ```
-Run with: `fdp run python fetch_script.py`
+Run with: `fdp run python /abs/path/to/fetch_script.py` (absolute path, no `cd`)
 
 `fetch_signal_for_zoom(out_path, shots, expr, tree, names=None)`:
 - Fetches `expr` from `tree` for each shot (same `MdsSignal` pattern as
@@ -115,8 +140,9 @@ plot_signal_zoom_from_npz(
     y_label="ph/cm2/sr/s",
 )
 ```
-Run with: `python plot_script.py` (NOT `fdp run` -- this step must render
-in-kernel for the interactive chart to display).
+Run with: `python /abs/path/to/plot_script.py` (NOT `fdp run` -- this step must
+render in-kernel for the interactive chart to display; and BARE, with no `cd`
+or `&&`, or it won't run in-kernel at all -- see the CRITICAL note above).
 
 `plot_signal_zoom_from_npz(npz_path, title="Signal", y_label="", x_label="Time (ms)", height=500, max_points=10000)`:
 - Loads the `.npz` written by step 1 and renders it via the same
@@ -134,7 +160,7 @@ in-kernel for the interactive chart to display).
 
 Request: "Show a **zoomable** chart of `\fs04` for shot 165920."
 
-Fetch script (`fdp run python fetch_fs04.py`):
+Fetch script (`fdp run python /content/fetch_fs04.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
@@ -143,7 +169,7 @@ from signal_zoom_colab import fetch_signal_for_zoom
 fetch_signal_for_zoom("/content/fs04_165920.npz", [165920], r"\fs04", "spectroscopy")
 ```
 
-Plot script (`python plot_fs04.py`):
+Plot script (`python /content/plot_fs04.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
@@ -157,7 +183,7 @@ plot_signal_zoom_from_npz("/content/fs04_165920.npz",
 
 Request: "**Zoomable** comparison of plasma current for shots 165340 and 188702."
 
-Fetch (`fdp run python fetch_ip.py`):
+Fetch (`fdp run python /content/fetch_ip.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
@@ -166,7 +192,7 @@ from signal_zoom_colab import fetch_signal_for_zoom
 fetch_signal_for_zoom("/content/ip_compare.npz", [165340, 188702], r"\ipmhd", "efit01")
 ```
 
-Plot (`python plot_ip.py`):
+Plot (`python /content/plot_ip.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
@@ -182,9 +208,11 @@ by 1e6, or note the unit as A in the title/label as shown here).
 ## Rules
 
 - Only use when the request has a zoom/interactive trigger term (see routing).
-- ALWAYS two scripts: fetch via `fdp run python fetch.py`, then plot via
-  plain `python plot.py`. Never combine them into one script -- fetching
-  cannot happen in-kernel here (see CRITICAL note above).
+- ALWAYS two scripts: fetch via `fdp run python /abs/path/fetch.py`, then plot
+  via plain `python /abs/path/plot.py`. Never combine them into one script --
+  fetching cannot happen in-kernel here (see CRITICAL note above).
+- The plot command must be BARE -- absolute path, no `cd`, no `&&`, no pipes,
+  or it runs as a subprocess and silently renders nothing.
 - Do NOT build your own Plotly figure -- call `plot_signal_zoom_from_npz`
   (or the lower-level `fetch_signal_for_zoom`/`plot_signal_zoom` if you need
   more control, e.g. unit conversion before plotting).
