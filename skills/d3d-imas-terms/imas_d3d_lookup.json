@@ -32,6 +32,7 @@
     "fields_with_unit_transform": 1,
     "fields_needing_parameters": 14,
     "fields_missing_tree": 0,
+    "ptdata_backed_fields": 14,
     "by_ids": {
       "charge_exchange": 6,
       "core_profiles_omfit": 1,
@@ -59,6 +60,7 @@
   },
   "imas_to_d3d": {
     "charge_exchange._array_order": {
+      "source_kind": "mdsplus",
       "mds_path": "\\IONS::TOP.CER.CALIBRATION.ARRAY_ORDER",
       "tree": "IONS",
       "parameterized": false,
@@ -83,6 +85,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "charge_exchange._tangential_active": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_active_path(TANGENTIAL)",
       "tree": "IONS",
       "parameterized": false,
@@ -107,6 +110,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "charge_exchange._tangential_installed": {
+      "source_kind": "mdsplus",
       "mds_path": "getnci(\"CER.CALIBRATION.TANGENTIAL.CHANNEL*:BEAMGEOMETRY\",\"LENGTH\")",
       "tree": "IONS",
       "parameterized": false,
@@ -130,6 +134,7 @@
       "source": "imas_composer/ids/charge_exchange.py"
     },
     "charge_exchange._vertical_active": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_active_path(VERTICAL)",
       "tree": "IONS",
       "parameterized": false,
@@ -154,6 +159,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "charge_exchange._vertical_installed": {
+      "source_kind": "mdsplus",
       "mds_path": "getnci(\"CER.CALIBRATION.VERTICAL.CHANNEL*:BEAMGEOMETRY\",\"LENGTH\")",
       "tree": "IONS",
       "parameterized": false,
@@ -177,6 +183,7 @@
       "source": "imas_composer/ids/charge_exchange.py"
     },
     "charge_exchange.code.parameters.total_installed_channels": {
+      "source_kind": "mdsplus",
       "mds_path": "getnci(\"CER.CALIBRATION.TANGENTIAL.CHANNEL*:BEAMGEOMETRY\",\"LENGTH\")",
       "tree": "IONS",
       "parameterized": false,
@@ -204,6 +211,7 @@
       ]
     },
     "core_profiles._gtime": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -235,10 +243,11 @@
       "example_n_samples": 93
     },
     "core_profiles.global_quantities.v_loop": {
-      "mds_path": "VLOOP",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "VLOOP",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -271,6 +280,7 @@
       "example_n_samples": 4096
     },
     "core_profiles.profiles_1d.electrons.density": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -305,6 +315,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.electrons.temperature": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -339,6 +350,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.grid.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -373,6 +385,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.grid.rho_tor_norm": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -407,6 +420,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.ion.density_thermal": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -441,6 +455,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.ion.rotation_frequency_tor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -475,6 +490,7 @@
       "example_n_samples": 93
     },
     "core_profiles.profiles_1d.ion.temperature": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -509,6 +525,7 @@
       "example_n_samples": 93
     },
     "ec_launchers._gyrotron_data": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -537,6 +554,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.frequency.data": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -568,6 +586,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.frequency.time": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -599,6 +618,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.identifier": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -630,6 +650,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.launching_position.phi": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -661,6 +682,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.launching_position.r": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -692,6 +714,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.launching_position.z": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -723,6 +746,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.mode": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -754,6 +778,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.name": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -785,6 +810,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.phase.angle": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -816,6 +842,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.phase.curvature": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -847,6 +874,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.power_launched.data": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -878,6 +906,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.power_launched.time": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -909,6 +938,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.spot.angle": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -940,6 +970,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.spot.size": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -971,6 +1002,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.steering_angle_pol": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -1002,6 +1034,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.steering_angle_tor": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -1033,6 +1066,7 @@
       "example_n_samples": 1
     },
     "ec_launchers.beam.time": {
+      "source_kind": "mdsplus",
       "mds_path": ".ECH.NUM_SYSTEMS",
       "tree": "RF",
       "parameterized": false,
@@ -1064,6 +1098,7 @@
       "example_n_samples": 1
     },
     "ece._ecephi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEPHI",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1096,6 +1131,7 @@
       "example_n_samples": 1
     },
     "ece._ecetheta": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECETHETA",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1128,6 +1164,7 @@
       "example_n_samples": 1
     },
     "ece._ecezh": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEZH",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1160,6 +1197,7 @@
       "example_n_samples": 1
     },
     "ece._fltrwid": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.FLTRWID",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1190,6 +1228,7 @@
       "example_n_samples": 48
     },
     "ece._freq": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.FREQ",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1222,6 +1261,7 @@
       "example_n_samples": 40
     },
     "ece._frequency_setup": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.FREQ",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1262,6 +1302,7 @@
       "example_n_samples": 40
     },
     "ece._geometry_setup": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEPHI",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1302,6 +1343,7 @@
       "example_n_samples": 1
     },
     "ece._numch": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.CAL.NUMCH",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1342,6 +1384,7 @@
       "example_n_samples": 1
     },
     "ece._temperature_data": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.TECE.TECE{01-NUMCH}",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -1377,6 +1420,7 @@
       ]
     },
     "ece._time_base": {
+      "source_kind": "mdsplus",
       "mds_path": "dim_of(\\ECE::TOP.TECE.TECE01)",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1408,6 +1452,7 @@
       ]
     },
     "ece.channel.frequency.data": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.FREQ",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1448,6 +1493,7 @@
       "example_n_samples": 40
     },
     "ece.channel.identifier": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_numch_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1475,6 +1521,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "ece.channel.if_bandwidth": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.FLTRWID",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1513,6 +1560,7 @@
       "example_n_samples": 48
     },
     "ece.channel.name": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_numch_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1540,6 +1588,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "ece.channel.t_e.data": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.TECE.TECE{01-NUMCH}",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -1575,6 +1624,7 @@
       ]
     },
     "ece.channel.t_e.data_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.TECE.TECE{ich}",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -1605,6 +1655,7 @@
       ]
     },
     "ece.channel.t_e.time": {
+      "source_kind": "mdsplus",
       "mds_path": "dim_of(\\ECE::TOP.TECE.TECE01)",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1632,6 +1683,7 @@
       ]
     },
     "ece.channel.time": {
+      "source_kind": "mdsplus",
       "mds_path": "dim_of(\\ECE::TOP.TECE.TECE01)",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1659,6 +1711,7 @@
       ]
     },
     "ece.line_of_sight.first_point.phi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEPHI",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1699,6 +1752,7 @@
       "example_n_samples": 1
     },
     "ece.line_of_sight.first_point.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEZH",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1739,6 +1793,7 @@
       "example_n_samples": 1
     },
     "ece.line_of_sight.second_point.phi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEPHI",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1774,6 +1829,7 @@
       "example_n_samples": 1
     },
     "ece.line_of_sight.second_point.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\ECE::TOP.SETUP.ECEZH",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -1814,6 +1870,7 @@
       "example_n_samples": 1
     },
     "equilibrium._aeqdsk_error": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ERROR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -1845,6 +1902,7 @@
       "example_n_samples": 64
     },
     "equilibrium._aminor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.AMINOR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -1876,6 +1934,7 @@
       "example_n_samples": 64
     },
     "equilibrium._area": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.AREA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -1907,6 +1966,7 @@
       "example_n_samples": 64
     },
     "equilibrium._bcentr": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.BCENTR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -1938,6 +1998,7 @@
       "example_n_samples": 93
     },
     "equilibrium._betan": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -1969,6 +2030,7 @@
       "example_n_samples": 64
     },
     "equilibrium._betap": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2000,6 +2062,7 @@
       "example_n_samples": 64
     },
     "equilibrium._betat": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2031,6 +2094,7 @@
       "example_n_samples": 64
     },
     "equilibrium._bt0": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BT0",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2062,6 +2126,7 @@
       "example_n_samples": 64
     },
     "equilibrium._ccbrsp": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CCBRSP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2093,6 +2158,7 @@
       "example_n_samples": 1674
     },
     "equilibrium._cdflux": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CDFLUX",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2124,6 +2190,7 @@
       "example_n_samples": 93
     },
     "equilibrium._cecurr": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CECURR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2155,6 +2222,7 @@
       "example_n_samples": 558
     },
     "equilibrium._cerror": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CERROR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2186,6 +2254,7 @@
       "example_n_samples": 2418
     },
     "equilibrium._chidflux": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIDFLUX",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2212,6 +2281,7 @@
       "example_n_samples": 67
     },
     "equilibrium._chiecc": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIECC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2238,6 +2308,7 @@
       "example_n_samples": 402
     },
     "equilibrium._chifcc": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIFCC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2264,6 +2335,7 @@
       "example_n_samples": 1206
     },
     "equilibrium._chigam": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2295,6 +2367,7 @@
       "example_n_samples": 9393
     },
     "equilibrium._chipasma": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2321,6 +2394,7 @@
       "example_n_samples": 67
     },
     "equilibrium._cmgam": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CMGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2352,6 +2426,7 @@
       "example_n_samples": 9393
     },
     "equilibrium._cmpr2": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CMPR2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2383,6 +2458,7 @@
       "example_n_samples": 7068
     },
     "equilibrium._constraint_time_indices": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2418,6 +2494,7 @@
       "example_n_samples": 93
     },
     "equilibrium._cpasma": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2449,6 +2526,7 @@
       "example_n_samples": 93
     },
     "equilibrium._cpasma_cocos": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.CPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2480,6 +2558,7 @@
       "example_n_samples": 93
     },
     "equilibrium._cpress": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CPRESS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2511,6 +2590,7 @@
       "example_n_samples": 93
     },
     "equilibrium._csilop": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CSILOP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2542,6 +2622,7 @@
       "example_n_samples": 4092
     },
     "equilibrium._diamag": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.DIAMAG",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2573,6 +2654,7 @@
       "example_n_samples": 93
     },
     "equilibrium._eccurt": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.ECCURT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2604,6 +2686,7 @@
       "example_n_samples": 558
     },
     "equilibrium._expmpi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.EXPMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2635,6 +2718,7 @@
       "example_n_samples": 7068
     },
     "equilibrium._fccurt": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FCCURT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2666,6 +2750,7 @@
       "example_n_samples": 1674
     },
     "equilibrium._ffprim": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.FFPRIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2697,6 +2782,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._fluxfun_jeff": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.JEFF",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2723,6 +2809,7 @@
       "example_n_samples": 6767
     },
     "equilibrium._fluxfun_jll": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.JLL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2749,6 +2836,7 @@
       "example_n_samples": 6767
     },
     "equilibrium._fluxfun_psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.PSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2775,6 +2863,7 @@
       "example_n_samples": 6767
     },
     "equilibrium._fluxfun_vol": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.VOL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2801,6 +2890,7 @@
       "example_n_samples": 6767
     },
     "equilibrium._fpol": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.FPOL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2832,6 +2922,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._fwtdia": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTDIA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2858,6 +2949,7 @@
       "example_n_samples": 67
     },
     "equilibrium._fwtec": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTEC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2889,6 +2981,7 @@
       "example_n_samples": 558
     },
     "equilibrium._fwtfc": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTFC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2920,6 +3013,7 @@
       "example_n_samples": 1674
     },
     "equilibrium._fwtgam": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2951,6 +3045,7 @@
       "example_n_samples": 9393
     },
     "equilibrium._fwtmp2": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTMP2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -2982,6 +3077,7 @@
       "example_n_samples": 7068
     },
     "equilibrium._fwtpasma": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3008,6 +3104,7 @@
       "example_n_samples": 67
     },
     "equilibrium._fwtpre": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3034,6 +3131,7 @@
       "example_n_samples": 67
     },
     "equilibrium._fwtsi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3065,6 +3163,7 @@
       "example_n_samples": 4092
     },
     "equilibrium._gapbot": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.GAPBOT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3096,6 +3195,7 @@
       "example_n_samples": 64
     },
     "equilibrium._gapin": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.GAPIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3127,6 +3227,7 @@
       "example_n_samples": 64
     },
     "equilibrium._gapout": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.GAPOUT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3158,6 +3259,7 @@
       "example_n_samples": 64
     },
     "equilibrium._gaptop": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.GAPTOP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3189,6 +3291,7 @@
       "example_n_samples": 64
     },
     "equilibrium._gtime": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3220,6 +3323,7 @@
       "example_n_samples": 93
     },
     "equilibrium._kappa": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.KAPPA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3251,6 +3355,7 @@
       "example_n_samples": 64
     },
     "equilibrium._li3": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.LI3",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3282,6 +3387,7 @@
       "example_n_samples": 64
     },
     "equilibrium._mtime": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.MTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3313,6 +3419,7 @@
       "example_n_samples": 93
     },
     "equilibrium._plasma": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.PLASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3344,6 +3451,7 @@
       "example_n_samples": 93
     },
     "equilibrium._pprime": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PPRIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3375,6 +3483,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._pres": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PRES",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3406,6 +3515,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._pressr": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.PRESSR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3437,6 +3547,7 @@
       "example_n_samples": 93
     },
     "equilibrium._psin": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PSIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3468,6 +3579,7 @@
       "example_n_samples": 65
     },
     "equilibrium._psirz": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PSIRZ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3499,6 +3611,7 @@
       "example_n_samples": 392925
     },
     "equilibrium._psurfa": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.PSURFA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3530,6 +3643,7 @@
       "example_n_samples": 64
     },
     "equilibrium._q0": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.Q0",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3561,6 +3675,7 @@
       "example_n_samples": 64
     },
     "equilibrium._q95": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.Q95",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3592,6 +3707,7 @@
       "example_n_samples": 64
     },
     "equilibrium._qmin": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.QMIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3623,6 +3739,7 @@
       "example_n_samples": 64
     },
     "equilibrium._qpsi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.QPSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3654,6 +3771,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._r_grid": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.R",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3685,6 +3803,7 @@
       "example_n_samples": 65
     },
     "equilibrium._rbbbs": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3716,6 +3835,7 @@
       "example_n_samples": 8184
     },
     "equilibrium._rhovn": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RHOVN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3747,6 +3867,7 @@
       "example_n_samples": 6045
     },
     "equilibrium._rmaxis": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RMAXIS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3778,6 +3899,7 @@
       "example_n_samples": 93
     },
     "equilibrium._rpress": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.RPRESS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3809,6 +3931,7 @@
       "example_n_samples": 93
     },
     "equilibrium._rsurf": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RSURF",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3840,6 +3963,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rvsid": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSID",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3871,6 +3995,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rvsiu": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSIU",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3902,6 +4027,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rvsod": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSOD",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3933,6 +4059,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rvsou": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSOU",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3964,6 +4091,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rxpt1": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -3995,6 +4123,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rxpt2": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RXPT2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4026,6 +4155,7 @@
       "example_n_samples": 64
     },
     "equilibrium._rzero": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RZERO",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4057,6 +4187,7 @@
       "example_n_samples": 93
     },
     "equilibrium._saimpi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAIMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4088,6 +4219,7 @@
       "example_n_samples": 7068
     },
     "equilibrium._saipre": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAIPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4119,6 +4251,7 @@
       "example_n_samples": 93
     },
     "equilibrium._saisil": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAISIL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4150,6 +4283,7 @@
       "example_n_samples": 4092
     },
     "equilibrium._seplim": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.SEPLIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4181,6 +4315,7 @@
       "example_n_samples": 64
     },
     "equilibrium._sigdia": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGDIA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4212,6 +4347,7 @@
       "example_n_samples": 93
     },
     "equilibrium._sigecc": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGECC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4238,6 +4374,7 @@
       "example_n_samples": 402
     },
     "equilibrium._sigfcc": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGFCC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4264,6 +4401,7 @@
       "example_n_samples": 1206
     },
     "equilibrium._siggam": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4295,6 +4433,7 @@
       "example_n_samples": 9393
     },
     "equilibrium._sigmpi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4321,6 +4460,7 @@
       "example_n_samples": 5092
     },
     "equilibrium._sigpasma": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4347,6 +4487,7 @@
       "example_n_samples": 67
     },
     "equilibrium._sigpre": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4378,6 +4519,7 @@
       "example_n_samples": 93
     },
     "equilibrium._sigsil": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGSIL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4404,6 +4546,7 @@
       "example_n_samples": 2948
     },
     "equilibrium._silopt": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SILOPT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4435,6 +4578,7 @@
       "example_n_samples": 4092
     },
     "equilibrium._sizeroj": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIZEROJ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4461,6 +4605,7 @@
       "example_n_samples": 67
     },
     "equilibrium._ssibry": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.SSIBRY",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4492,6 +4637,7 @@
       "example_n_samples": 93
     },
     "equilibrium._ssimag": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.SSIMAG",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4523,6 +4669,7 @@
       "example_n_samples": 93
     },
     "equilibrium._tangam": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.TANGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4554,6 +4701,7 @@
       "example_n_samples": 9393
     },
     "equilibrium._tribot": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.TRIBOT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4585,6 +4733,7 @@
       "example_n_samples": 64
     },
     "equilibrium._tritop": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.TRITOP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4616,6 +4765,7 @@
       "example_n_samples": 64
     },
     "equilibrium._volume": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.VOLUME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4647,6 +4797,7 @@
       "example_n_samples": 64
     },
     "equilibrium._vzeroj": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.VZEROJ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4673,6 +4824,7 @@
       "example_n_samples": 67
     },
     "equilibrium._z_grid": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.Z",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4704,6 +4856,7 @@
       "example_n_samples": 65
     },
     "equilibrium._zbbbs": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.ZBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4735,6 +4888,7 @@
       "example_n_samples": 8184
     },
     "equilibrium._zmaxis": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.ZMAXIS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4766,6 +4920,7 @@
       "example_n_samples": 93
     },
     "equilibrium._zsurf": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZSURF",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4797,6 +4952,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zvsid": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZVSID",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4828,6 +4984,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zvsiu": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZVSIU",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4859,6 +5016,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zvsod": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZVSOD",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4890,6 +5048,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zvsou": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZVSOU",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4921,6 +5080,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zxpt1": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4952,6 +5112,7 @@
       "example_n_samples": 64
     },
     "equilibrium._zxpt2": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZXPT2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -4983,6 +5144,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5017,6 +5179,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.boundary.outline.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5051,6 +5214,7 @@
       "example_n_samples": 8184
     },
     "equilibrium.time_slice.boundary.outline.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5086,6 +5250,7 @@
       "example_n_samples": 8184
     },
     "equilibrium.time_slice.boundary.x_point.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5121,6 +5286,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary.x_point.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5156,6 +5322,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.closest_wall_point.distance": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.SEPLIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5190,6 +5357,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.elongation": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.KAPPA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5224,6 +5392,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.gap.name": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5258,6 +5427,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.boundary_separatrix.gap.value": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.GAPIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5295,6 +5465,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.geometric_axis.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RSURF",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5329,6 +5500,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.geometric_axis.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZSURF",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5363,6 +5535,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.minor_radius": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.AMINOR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5397,6 +5570,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.outline.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5431,6 +5605,7 @@
       "example_n_samples": 8184
     },
     "equilibrium.time_slice.boundary_separatrix.outline.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RBBBS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5466,6 +5641,7 @@
       "example_n_samples": 8184
     },
     "equilibrium.time_slice.boundary_separatrix.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.SSIBRY",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5502,6 +5678,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.boundary_separatrix.strike_point.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSID",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5539,6 +5716,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.strike_point.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RVSID",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5580,6 +5758,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.triangularity_lower": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.TRIBOT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5614,6 +5793,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.triangularity_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.TRITOP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5648,6 +5828,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.x_point.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.RXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5683,6 +5864,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.boundary_separatrix.x_point.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ZXPT1",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5718,6 +5900,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.constraints.bpol_probe.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAIMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5753,6 +5936,7 @@
       "example_n_samples": 7068
     },
     "equilibrium.time_slice.constraints.bpol_probe.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.EXPMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5788,6 +5972,7 @@
       "example_n_samples": 7068
     },
     "equilibrium.time_slice.constraints.bpol_probe.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGMPI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5818,6 +6003,7 @@
       "example_n_samples": 5092
     },
     "equilibrium.time_slice.constraints.bpol_probe.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CMPR2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5853,6 +6039,7 @@
       "example_n_samples": 7068
     },
     "equilibrium.time_slice.constraints.bpol_probe.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTMP2",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5888,6 +6075,7 @@
       "example_n_samples": 7068
     },
     "equilibrium.time_slice.constraints.diamagnetic_flux.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIDFLUX",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5918,6 +6106,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.diamagnetic_flux.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.DIAMAG",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5953,6 +6142,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.diamagnetic_flux.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGDIA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -5988,6 +6178,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.diamagnetic_flux.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CDFLUX",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6023,6 +6214,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.diamagnetic_flux.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTDIA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6053,6 +6245,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.flux_loop.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAISIL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6088,6 +6281,7 @@
       "example_n_samples": 4092
     },
     "equilibrium.time_slice.constraints.flux_loop.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SILOPT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6125,6 +6319,7 @@
       "example_n_samples": 4092
     },
     "equilibrium.time_slice.constraints.flux_loop.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGSIL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6157,6 +6352,7 @@
       "example_n_samples": 2948
     },
     "equilibrium.time_slice.constraints.flux_loop.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CSILOP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6194,6 +6390,7 @@
       "example_n_samples": 4092
     },
     "equilibrium.time_slice.constraints.flux_loop.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6229,6 +6426,7 @@
       "example_n_samples": 4092
     },
     "equilibrium.time_slice.constraints.ip.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6259,6 +6457,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.ip.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.PLASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6296,6 +6495,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.ip.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6326,6 +6526,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.ip.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6363,6 +6564,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.ip.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6393,6 +6595,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.j_tor.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.VZEROJ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6425,6 +6628,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.j_tor.position.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIZEROJ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6459,6 +6663,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.constraints.mse_polarisation_angle.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6494,6 +6699,7 @@
       "example_n_samples": 9393
     },
     "equilibrium.time_slice.constraints.mse_polarisation_angle.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.TANGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6529,6 +6735,7 @@
       "example_n_samples": 9393
     },
     "equilibrium.time_slice.constraints.mse_polarisation_angle.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6564,6 +6771,7 @@
       "example_n_samples": 9393
     },
     "equilibrium.time_slice.constraints.mse_polarisation_angle.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CMGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6599,6 +6807,7 @@
       "example_n_samples": 9393
     },
     "equilibrium.time_slice.constraints.mse_polarisation_angle.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTGAM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6634,6 +6843,7 @@
       "example_n_samples": 9393
     },
     "equilibrium.time_slice.constraints.pf_current.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CHIECC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6665,6 +6875,7 @@
       "example_n_samples": 402
     },
     "equilibrium.time_slice.constraints.pf_current.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.ECCURT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6701,6 +6912,7 @@
       "example_n_samples": 558
     },
     "equilibrium.time_slice.constraints.pf_current.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGECC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6732,6 +6944,7 @@
       "example_n_samples": 402
     },
     "equilibrium.time_slice.constraints.pf_current.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CECURR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6768,6 +6981,7 @@
       "example_n_samples": 558
     },
     "equilibrium.time_slice.constraints.pf_current.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTEC",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6804,6 +7018,7 @@
       "example_n_samples": 558
     },
     "equilibrium.time_slice.constraints.pressure.chi_squared": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SAIPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6839,6 +7054,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.pressure.measured": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.PRESSR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6874,6 +7090,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.pressure.measured_error_upper": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.SIGPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6909,6 +7126,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.pressure.position.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.RPRESS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6948,6 +7166,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.pressure.reconstructed": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CPRESS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -6983,6 +7202,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.constraints.pressure.weight": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.FWTPRE",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7013,6 +7233,7 @@
       "example_n_samples": 67
     },
     "equilibrium.time_slice.convergence.grad_shafranov_deviation_expression.index": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ERROR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7047,6 +7268,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.convergence.grad_shafranov_deviation_value": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.ERROR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7081,6 +7303,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.convergence.iterations_n": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CERROR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7116,6 +7339,7 @@
       "example_n_samples": 2418
     },
     "equilibrium.time_slice.global_quantities.area": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.AREA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7150,6 +7374,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.beta_normal": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7184,6 +7409,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.beta_pol": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAP",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7218,6 +7444,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.beta_tor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BETAT",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7252,6 +7479,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.ip": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.MEASUREMENTS.CPASMA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7288,6 +7516,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.global_quantities.li_3": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.LI3",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7322,6 +7551,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.magnetic_axis.b_field_tor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.BT0",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7356,6 +7586,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.magnetic_axis.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RMAXIS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7390,6 +7621,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.global_quantities.magnetic_axis.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.ZMAXIS",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7424,6 +7656,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.global_quantities.psi_axis": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.SSIMAG",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7460,6 +7693,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.global_quantities.psi_boundary": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.SSIBRY",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7496,6 +7730,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.global_quantities.q_95": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.Q95",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7532,6 +7767,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.q_axis": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.Q0",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7568,6 +7804,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.q_min.value": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.QMIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7604,6 +7841,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.surface": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.PSURFA",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7638,6 +7876,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.global_quantities.volume": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.AEQDSK.VOLUME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7672,6 +7911,7 @@
       "example_n_samples": 64
     },
     "equilibrium.time_slice.profiles_1d.dpressure_dpsi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PPRIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7708,6 +7948,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.f": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.FPOL",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7742,6 +7983,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.f_df_dpsi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.FFPRIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7778,6 +8020,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.j_parallel": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.PSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7811,6 +8054,7 @@
       "example_n_samples": 6767
     },
     "equilibrium.time_slice.profiles_1d.j_tor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.PSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7844,6 +8088,7 @@
       "example_n_samples": 6767
     },
     "equilibrium.time_slice.profiles_1d.pressure": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PRES",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7878,6 +8123,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PSIN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7916,6 +8162,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_1d.q": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.QPSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7952,6 +8199,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.rho_tor_norm": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RHOVN",
       "tree": "EFIT01",
       "parameterized": false,
@@ -7986,6 +8234,7 @@
       "example_n_samples": 6045
     },
     "equilibrium.time_slice.profiles_1d.volume": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.FLUXFUN.PSI",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8019,6 +8268,7 @@
       "example_n_samples": 6767
     },
     "equilibrium.time_slice.profiles_2d.b_field_r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.R",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8057,6 +8307,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_2d.b_field_tor": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.R",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8099,6 +8350,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_2d.b_field_z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.R",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8137,6 +8389,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_2d.grid.dim1": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.R",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8172,6 +8425,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_2d.grid.dim2": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.Z",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8207,6 +8461,7 @@
       "example_n_samples": 65
     },
     "equilibrium.time_slice.profiles_2d.grid_type.index": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.BCENTR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8241,6 +8496,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.profiles_2d.psi": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.PSIRZ",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8277,6 +8533,7 @@
       "example_n_samples": 392925
     },
     "equilibrium.time_slice.profiles_2d.type.index": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.BCENTR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8311,6 +8568,7 @@
       "example_n_samples": 93
     },
     "equilibrium.time_slice.time": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.GTIME",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8345,6 +8603,7 @@
       "example_n_samples": 93
     },
     "equilibrium.vacuum_toroidal_field.b0": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.BCENTR",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8379,6 +8638,7 @@
       "example_n_samples": 93
     },
     "equilibrium.vacuum_toroidal_field.r0": {
+      "source_kind": "mdsplus",
       "mds_path": "\\EFIT01::TOP.RESULTS.GEQDSK.RZERO",
       "tree": "EFIT01",
       "parameterized": false,
@@ -8413,6 +8673,7 @@
       "example_n_samples": 93
     },
     "interferometer._rip_data": {
+      "source_kind": "mdsplus",
       "mds_path": "\\{tree}::{identifier}",
       "tree": "tree",
       "parameterized": true,
@@ -8441,6 +8702,7 @@
       "path_template": "\\{tree}::{identifier}"
     },
     "interferometer._rip_time": {
+      "source_kind": "mdsplus",
       "mds_path": "dim_of({time_path})",
       "tree": "tree",
       "parameterized": true,
@@ -8468,10 +8730,11 @@
       "path_template": "dim_of({time_path})"
     },
     "magnetics.b_field_pol_probe.field.data": {
-      "mds_path": "compsig",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "compsig",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8495,10 +8758,11 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'ptdata._core.PtDataError'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/python3.12/s"
     },
     "magnetics.b_field_pol_probe.field.data_error_upper": {
-      "mds_path": "compsig",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "compsig",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8522,10 +8786,11 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'ptdata._core.PtDataError'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/python3.12/s"
     },
     "magnetics.diamagnetic_flux.data": {
-      "mds_path": "DIAMAG3",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "DIAMAG3",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8557,10 +8822,11 @@
       "example_n_samples": 4096
     },
     "magnetics.diamagnetic_flux.data_error_upper": {
-      "mds_path": "DIAMAG3",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "DIAMAG3",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8593,10 +8859,11 @@
       "example_n_samples": 4096
     },
     "magnetics.diamagnetic_flux.time": {
-      "mds_path": "DIAMAG3",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "DIAMAG3",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8628,10 +8895,11 @@
       "example_n_samples": 4096
     },
     "magnetics.flux_loop.flux.data": {
-      "mds_path": "compsig",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "compsig",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8655,10 +8923,11 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'ptdata._core.PtDataError'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/python3.12/s"
     },
     "magnetics.flux_loop.flux.data_error_upper": {
-      "mds_path": "compsig",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "compsig",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8684,10 +8953,11 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'ptdata._core.PtDataError'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/python3.12/s"
     },
     "magnetics.ip.data": {
-      "mds_path": "IP",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "IP",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8720,10 +8990,11 @@
       "example_n_samples": 4096
     },
     "magnetics.ip.data_error_upper": {
-      "mds_path": "IP",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "IP",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8758,10 +9029,11 @@
       "example_n_samples": 4096
     },
     "magnetics.ip.time": {
-      "mds_path": "IP",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "IP",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8794,6 +9066,7 @@
       "example_n_samples": 4096
     },
     "reflectometer_profile._full_profile_R": {
+      "source_kind": "mdsplus",
       "mds_path": "{full_prof_prefix}R",
       "tree": "self.tree",
       "parameterized": true,
@@ -8821,6 +9094,7 @@
       "path_template": "{full_prof_prefix}R"
     },
     "reflectometer_profile._full_profile_density": {
+      "source_kind": "mdsplus",
       "mds_path": "{full_prof_prefix}DENSITY",
       "tree": "self.tree",
       "parameterized": true,
@@ -8848,6 +9122,7 @@
       "path_template": "{full_prof_prefix}DENSITY"
     },
     "reflectometer_profile._full_profile_time": {
+      "source_kind": "mdsplus",
       "mds_path": "{full_prof_prefix}TIME",
       "tree": "self.tree",
       "parameterized": true,
@@ -8875,6 +9150,7 @@
       "path_template": "{full_prof_prefix}TIME"
     },
     "summary._description": {
+      "source_kind": "mdsplus",
       "mds_path": "\\D3D::TOP.COMMENTS:BRIEF",
       "tree": "D3D",
       "parameterized": false,
@@ -8899,6 +9175,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "summary.description": {
+      "source_kind": "mdsplus",
       "mds_path": "\\D3D::TOP.COMMENTS:BRIEF",
       "tree": "D3D",
       "parameterized": false,
@@ -8926,10 +9203,11 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "tf.b_field_tor_vacuum_r.data": {
-      "mds_path": "BT",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "BT",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8961,10 +9239,11 @@
       "example_n_samples": 4096
     },
     "tf.b_field_tor_vacuum_r.data_error_upper": {
-      "mds_path": "BT",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "BT",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -8997,10 +9276,11 @@
       "example_n_samples": 4096
     },
     "tf.b_field_tor_vacuum_r.time": {
-      "mds_path": "BT",
-      "tree": "__ptdata__",
+      "source_kind": "ptdata",
+      "mds_path": null,
+      "tree": null,
       "parameterized": false,
-      "ptdata_pointname": null,
+      "ptdata_pointname": "BT",
       "cocos_transform": null,
       "unit_transform": null,
       "confidence": "derived",
@@ -9032,6 +9312,7 @@
       "example_n_samples": 4096
     },
     "thomson_scattering._calib_nums": {
+      "source_kind": "mdsplus",
       "mds_path": ".ts.BLESSED.header.calib_nums",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -9067,6 +9348,7 @@
       "example_n_samples": 12
     },
     "thomson_scattering._hwmap": {
+      "source_kind": "mdsplus",
       "mds_path": ".{SYSTEM}.hwmapints (TANGENTIAL, DIVERTOR, CORE)",
       "tree": "TSCAL",
       "parameterized": true,
@@ -9103,6 +9385,7 @@
       ]
     },
     "thomson_scattering._position_phi": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_calib_nums_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -9130,6 +9413,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "thomson_scattering._position_r": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_calib_nums_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -9157,6 +9441,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "thomson_scattering._position_z": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_calib_nums_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -9184,6 +9469,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "thomson_scattering._system_availability": {
+      "source_kind": "mdsplus",
       "mds_path": ".TS.BLESSED.{SYSTEM}:R",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -9220,6 +9506,7 @@
       ]
     },
     "thomson_scattering.channel.identifier": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_calib_nums_path()",
       "tree": "ELECTRONS",
       "parameterized": false,
@@ -9247,6 +9534,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "thomson_scattering.channel.n_e.time": {
+      "source_kind": "mdsplus",
       "mds_path": ".TS.BLESSED.{SYSTEM}:TIME",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -9283,6 +9571,7 @@
       ]
     },
     "thomson_scattering.channel.name": {
+      "source_kind": "mdsplus",
       "mds_path": "self._get_hwmap_path(system)",
       "tree": "TSCAL",
       "parameterized": false,
@@ -9311,6 +9600,7 @@
       "last_error": "RuntimeError: {'label': 'v', 'type': \"<class 'MDSplus.mdsExceptions.TreeFOPENR'>\", 'traceback': 'Traceback (most recent call last):\\n  File \"/opt/conda/lib/pyth"
     },
     "thomson_scattering.channel.position.phi": {
+      "source_kind": "mdsplus",
       "mds_path": ".TS.BLESSED.{SYSTEM}:PHI",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -9347,6 +9637,7 @@
       ]
     },
     "thomson_scattering.channel.position.r": {
+      "source_kind": "mdsplus",
       "mds_path": ".TS.BLESSED.{SYSTEM}:R",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -9383,6 +9674,7 @@
       ]
     },
     "thomson_scattering.channel.position.z": {
+      "source_kind": "mdsplus",
       "mds_path": ".TS.BLESSED.{SYSTEM}:Z",
       "tree": "ELECTRONS",
       "parameterized": true,
@@ -9419,6 +9711,7 @@
       ]
     },
     "wall._limiter_data": {
+      "source_kind": "mdsplus",
       "mds_path": "\\TOP.RESULTS.GEQDSK.LIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -9450,6 +9743,7 @@
       "example_n_samples": 98
     },
     "wall.description_2d.limiter.unit.outline.r": {
+      "source_kind": "mdsplus",
       "mds_path": "\\TOP.RESULTS.GEQDSK.LIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -9484,6 +9778,7 @@
       "example_n_samples": 98
     },
     "wall.description_2d.limiter.unit.outline.z": {
+      "source_kind": "mdsplus",
       "mds_path": "\\TOP.RESULTS.GEQDSK.LIM",
       "tree": "EFIT01",
       "parameterized": false,
@@ -10054,25 +10349,25 @@
     "TSCAL|self._get_hwmap_path(system)": [
       "thomson_scattering.channel.name"
     ],
-    "__ptdata__|BT": [
+    "ptdata|BT": [
       "tf.b_field_tor_vacuum_r.data",
       "tf.b_field_tor_vacuum_r.data_error_upper",
       "tf.b_field_tor_vacuum_r.time"
     ],
-    "__ptdata__|DIAMAG3": [
+    "ptdata|DIAMAG3": [
       "magnetics.diamagnetic_flux.data",
       "magnetics.diamagnetic_flux.data_error_upper",
       "magnetics.diamagnetic_flux.time"
     ],
-    "__ptdata__|IP": [
+    "ptdata|IP": [
       "magnetics.ip.data",
       "magnetics.ip.data_error_upper",
       "magnetics.ip.time"
     ],
-    "__ptdata__|VLOOP": [
+    "ptdata|VLOOP": [
       "core_profiles.global_quantities.v_loop"
     ],
-    "__ptdata__|compsig": [
+    "ptdata|compsig": [
       "magnetics.b_field_pol_probe.field.data",
       "magnetics.b_field_pol_probe.field.data_error_upper",
       "magnetics.flux_loop.flux.data",

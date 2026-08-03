@@ -47,6 +47,19 @@ def _norm(p: str) -> str:
     return re.sub(r"\[[^\]]*\]", "", (p or "").strip()).strip(".").lower()
 
 
+PTDATA_NOTE = ("This field comes from PTDATA, not an MDSplus tree. Fetch it "
+               "with PtDataSignal(ptdata_pointname) and NO tree argument, via "
+               "`fdp run` -- PTDATA does not work in-kernel. Passing "
+               "mds_path/tree to MdsSignal will fail.")
+
+
+def _fetch_hint(row: dict) -> dict:
+    """How to actually fetch this row. PTDATA and MDSplus differ."""
+    if row.get("source_kind") == "ptdata":
+        return {"fetch_with": "PtDataSignal", "fetch_note": PTDATA_NOTE}
+    return {"fetch_with": "MdsSignal"}
+
+
 def _cocos_fields_for(transform: str | None) -> dict:
     """The COCOS warning payload for a row. Single source of truth.
 
@@ -102,6 +115,7 @@ def imas_to_d3d(imas_path: str, shot: int | None = None,
         out = dict(row)
         out["imas_path"] = k
         out.update(_cocos_fields_for(out.get("cocos_transform")))
+        out.update(_fetch_hint(out))
         if shot is not None:
             ok = out.get("verified_on_shots") or []
             out["verified_for_shot"] = shot in ok
@@ -125,6 +139,8 @@ def d3d_to_imas(signal: str, tree: str | None = None) -> list[dict]:
     hits = []
     for imas_path, row in d["imas_to_d3d"].items():
         p = (row.get("mds_path") or "").lower().lstrip("\\")
+        if not p:
+            p = (row.get("ptdata_pointname") or "").lower()
         pt = (row.get("ptdata_pointname") or "").lower()
         if tree and (row.get("tree") or "").lower() != tree.lower():
             continue
@@ -138,9 +154,22 @@ def d3d_to_imas(signal: str, tree: str | None = None) -> list[dict]:
                 "confidence": row.get("confidence"),
                 "ids": row.get("ids"),
             }
+            hit["source_kind"] = row.get("source_kind")
+            hit["ptdata_pointname"] = row.get("ptdata_pointname")
             hit.update(_cocos_fields_for(row.get("cocos_transform")))
+            hit.update(_fetch_hint(row))
             hits.append(hit)
-    return sorted(hits, key=lambda h: (not h["verified"], h["imas_path"]))
+    # Rank by how well the query matched, not alphabetically. A bare "IP"
+    # substring-matches CHIPASMA, SAIPRE and friends, which would otherwise
+    # bury the actual PTDATA `IP` row.
+    def rank(h: dict) -> tuple:
+        target = (h.get("ptdata_pointname") or h.get("mds_path") or "").lower()
+        leaf = re.split(r"[.:\\]", target.rstrip(":"))[-1]
+        exact = leaf == q                      # CPASMA == cpasma
+        tail = target.endswith(q)              # ...MEASUREMENTS.CPASMA
+        return (not exact, not tail, not h["verified"], h["imas_path"])
+
+    return sorted(hits, key=rank)
 
 
 def search(term: str, limit: int = 20) -> list[dict]:
@@ -164,7 +193,10 @@ def search(term: str, limit: int = 20) -> list[dict]:
                 "verified_on_shots": row.get("verified_on_shots"),
                 "confidence": row.get("confidence"),
             }
+            hit["source_kind"] = row.get("source_kind")
+            hit["ptdata_pointname"] = row.get("ptdata_pointname")
             hit.update(_cocos_fields_for(row.get("cocos_transform")))
+            hit.update(_fetch_hint(row))
             hits.append(hit)
     hits.sort(key=lambda h: (not h["verified"], len(h["imas_path"])))
     return hits[:limit]

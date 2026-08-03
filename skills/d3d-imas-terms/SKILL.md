@@ -139,11 +139,18 @@ for the same signal. Pass `shot=` when the user mentions one, and report
 `verified_for_shot`. A mapping verified on recent shots may not hold for a
 1990s shot.
 
-**6. Rows with `parameterized: true` are templates, not names.** They need a
+**6. PTDATA rows fetch differently -- check `source_kind`.** 14 fields come
+from PTDATA rather than an MDSplus tree. Those rows have `source_kind:
+"ptdata"`, a `ptdata_pointname`, and **no `mds_path` and no `tree`**. Fetch
+them with `PtDataSignal(pointname)` and no tree argument, via `fdp run`
+(PTDATA does not work in-kernel). Every row carries `fetch_with` --
+`MdsSignal` or `PtDataSignal` -- so use that rather than assuming.
+
+**7. Rows with `parameterized: true` are templates, not names.** They need a
 channel or system argument (`required_parameters` lists which). Don't present
 `\ECE::TOP.TECE.TECE{01-NUMCH}` as if it were a fetchable signal.
 
-**7. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
+**8. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
 the complete IMAS standard. If something is absent, that means it is absent
 from *this table*, not that it doesn't exist in IMAS.
 
@@ -167,7 +174,9 @@ from *this table*, not that it doesn't exist in IMAS.
 
 | field | meaning |
 |---|---|
-| `mds_path`, `tree` | the DIII-D signal, ready to hand to `d3d-shot-fetcher` |
+| `source_kind` | `mdsplus` or `ptdata` -- they fetch differently |
+| `fetch_with` | `MdsSignal` or `PtDataSignal` |
+| `mds_path`, `tree` | the DIII-D signal (MDSplus rows only; null for PTDATA) |
 | `ptdata_pointname` | set when the source is PTDATA rather than an MDSplus tree |
 | `cocos_transform` | sign/orientation conversion required (see rule 3) |
 | `unit_transform` | inline unit conversion, e.g. `/1000.` for ms -> s |
