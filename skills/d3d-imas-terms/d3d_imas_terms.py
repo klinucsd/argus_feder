@@ -128,6 +128,51 @@ def imas_to_d3d(imas_path: str, shot: int | None = None,
     return None
 
 
+def suggest(query: str, limit: int = 5, cutoff: float = 0.6) -> list[dict]:
+    """Closest IMAS paths to a query that did not match exactly.
+
+    Exists because a typo and a genuinely-absent field otherwise produce the
+    IDENTICAL answer -- `imas_to_d3d()` returns None for both, and the user is
+    told "not in the table" with equal confidence. Verified 2026-08-03: a
+    single wrong letter (`global_quantites`), an omitted segment
+    (`equilibrium.global_quantities.ip`) or slashes instead of dots all
+    returned None with zero hints.
+
+    Matches on the whole path AND on the final segment, so a truncated or
+    misremembered path still finds its family.
+    """
+    import difflib
+
+    d = _load()
+    q = _norm(query)
+    if not q:
+        return []
+    q_leaf = q.split(".")[-1]
+    scored: dict[str, float] = {}
+    for k in d["imas_to_d3d"]:
+        nk = _norm(k)
+        s = difflib.SequenceMatcher(None, q, nk).ratio()
+        # a right-looking leaf is a strong signal even if the prefix is wrong
+        leaf = difflib.SequenceMatcher(None, q_leaf, nk.split(".")[-1]).ratio()
+        score = max(s, 0.5 * s + 0.5 * leaf)
+        if score >= cutoff:
+            scored[k] = max(scored.get(k, 0.0), score)
+
+    out = []
+    for k, sc in sorted(scored.items(), key=lambda kv: -kv[1])[:limit]:
+        row = d["imas_to_d3d"][k]
+        out.append({
+            "imas_path": k,
+            "similarity": round(sc, 3),
+            "mds_path": row.get("mds_path"),
+            "ptdata_pointname": row.get("ptdata_pointname"),
+            "tree": row.get("tree"),
+            "verified": row.get("verified"),
+            **_cocos_fields_for(row.get("cocos_transform")),
+        })
+    return out
+
+
 def d3d_to_imas(signal: str, tree: str | None = None) -> list[dict]:
     """DIII-D signal (or fragment) -> the IMAS field(s) it backs.
 

@@ -23,7 +23,7 @@ This skill translates between them.
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-imas-terms"))
-from d3d_imas_terms import imas_to_d3d, d3d_to_imas, search, table_info
+from d3d_imas_terms import imas_to_d3d, d3d_to_imas, search, suggest, table_info
 
 # 1. IMAS name -> DIII-D signal. Array indices in the input are fine.
 r = imas_to_d3d("equilibrium.time_slice[0].global_quantities.ip", shot=165920)
@@ -48,8 +48,18 @@ for h in search("elongation", limit=3):
     if h.get("cocos_warning"):
         print(f"     CAUTION {h['cocos_transform']}: {h['cocos_meaning']}")
 
-# 4. Not in the table -> None. Say so; never invent a mapping.
-print("\nunknown:", imas_to_d3d("equilibrium.made_up_field"))
+# 4. Not in the table -> None. ALWAYS try suggest() before saying "absent":
+#    a typo and a genuinely-missing field both return None.
+typo = "equilibrium.time_slice.global_quantites.ip"      # note: quantites
+print(f"\n{typo}\n  imas_to_d3d -> {imas_to_d3d(typo)}")
+for sg in suggest(typo, limit=1):
+    print(f"  did you mean {sg['imas_path']}?  (similarity {sg['similarity']})")
+
+print("\nequilibrium.made_up_field")
+print(f"  imas_to_d3d -> {imas_to_d3d('equilibrium.made_up_field')}")
+best = suggest("equilibrium.made_up_field", limit=1)
+print(f"  best suggestion similarity {best[0]['similarity'] if best else None}"
+      "  -> too low to be a typo; report it as absent")
 
 i = table_info()
 print(f"\ntable: {i['summary']['imas_fields_verified']} verified of "
@@ -74,17 +84,44 @@ DIII-D CPASMA is used by:
 search('elongation'):
   equilibrium.time_slice.boundary_separatrix.elongation -> \EFIT01::TOP.RESULTS.AEQDSK.KAPPA
 
-unknown: None
+equilibrium.time_slice.global_quantites.ip
+  imas_to_d3d -> None
+  did you mean equilibrium.time_slice.global_quantities.ip?  (similarity 0.994)
+
+equilibrium.made_up_field
+  imas_to_d3d -> None
+  best suggestion similarity 0.714  -> too low to be a typo; report it as absent
 
 table: 258 verified of 294 fields, upstream 8873703c
 ```
 
 ## Rules
 
-**1. Never invent a mapping.** If `imas_to_d3d()` returns `None`, the field is
-not in the table -- say exactly that. IMAS and DIII-D names are unrelated
-vocabularies; a DIII-D name cannot be guessed from an IMAS name or vice versa.
-Offer `search()` results instead.
+**1. Never invent a mapping -- but check for a typo before declaring absence.**
+If `imas_to_d3d()` returns `None`, do NOT guess: IMAS and DIII-D names are
+unrelated vocabularies, so a DIII-D name cannot be derived from an IMAS name.
+
+**Always call `suggest()` before concluding a field is absent.** A mistyped
+path and a genuinely-absent field both return `None`, so without this they get
+the same confident "not in the table" answer. Verified 2026-08-03: one wrong
+letter (`global_quantites`), an omitted segment
+(`equilibrium.global_quantities.ip`), or slashes instead of dots all returned
+`None` with no hint.
+
+Read the `similarity` score -- it separates the two cases cleanly:
+
+| similarity | meaning | what to say |
+|---|---|---|
+| >= 0.85 | almost certainly a typo | "Did you mean `X`?" then answer for X, saying you did so |
+| 0.6 - 0.85 | loosely related | offer as related, NOT as the answer |
+| no results | genuinely absent | "not in the table" |
+
+Measured: typos score 0.83-0.99 (`global_quantites` -> 0.994); a genuinely
+absent field scores 0.71 or returns nothing (`\ipmhd` -> nothing).
+
+**A suggestion is never a mapping.** Offering `equilibrium._fpol` for a bogus
+path as though it were the answer is exactly the invented mapping this rule
+forbids. Name the substitution explicitly.
 
 **1b. When the requested name is absent, do NOT claim a near-match is the same
 quantity.** Offering related rows is helpful; asserting equivalence is not.
@@ -162,6 +199,8 @@ from *this table*, not that it doesn't exist in IMAS.
 - `d3d_to_imas(signal, tree=None)` -> list of IMAS fields backed by that DIII-D
   signal. Matches a full path, a PTDATA pointname, or a trailing fragment
   (`CPASMA` works as well as `\EFIT01::TOP.MEASUREMENTS.CPASMA`).
+- `suggest(query, limit=5, cutoff=0.6)` -> closest IMAS paths with a
+  `similarity` score. Call this whenever `imas_to_d3d()` returns `None`.
 - `search(term, limit=20)` -> free-text across IMAS paths, DIII-D paths and
   summaries. Use when the exact IMAS path isn't known.
 - `list_ids(verified_only=False)` -> which IMAS systems are covered, and how many

@@ -183,6 +183,23 @@ below), not an error.
 | `sig.shot()` | shot comes from `rec["shot"]` | `AttributeError` |
 | `MdsSignal(expression=..., tree=...)` | `MdsSignal(r"\ipmhd", "efit01")` | wrong kwarg names; the real signature is `MdsSignal(expression, treename, location=None, dims=("times",), ...)` |
 
+## Sampling rate: a time INTERVAL in ms is not a frequency in Hz
+
+When reporting a sampling rate, convert -- do not quote the interval as if it
+were a rate. `times` are in MILLIseconds, so for a median interval `dt`:
+
+```python
+dt = np.median(np.diff(times))     # ms
+rate_hz  = 1000.0 / dt             # Hz
+rate_khz = 1.0 / dt                # kHz
+```
+
+Verified 2026-08-03: an answer reported EFIT's cadence as "~20 Hz" from a
+20.0 ms interval. It is **50 Hz**. The same answer's own follow-up cell got it
+right (50.2 Hz), so the two contradicted each other. This is the same slip as
+the filterscope `1e3/dt` mislabel -- worth an explicit check whenever a rate
+is derived from a time base.
+
 ## Data access constraints
 
 Data comes from the Pelican mirror. MDSplus tree paths for ALL DIII-D trees are
