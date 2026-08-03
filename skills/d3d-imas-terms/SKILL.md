@@ -91,35 +91,53 @@ for the same shot." They do not. On shot 165340:
 | `\ipmhd` | `\EFIT01::TOP.RESULTS.AEQDSK:IPMHD` | 311 | 2.9202e5 |
 | `\EFIT01::TOP.MEASUREMENTS.CPASMA` | `…MEASUREMENTS:CPASMA` | 315 | 2.718e5 |
 
-Different nodes, different lengths, different values -- one is the EFIT
-*measurement constraint*, the other the *fitted output*. (Confusingly there are
-two CPASMA nodes: `RESULTS.GEQDSK.CPASMA` does match `\ipmhd` exactly, while
+Different nodes, different lengths, different values. (Confusingly there are two
+CPASMA nodes: `RESULTS.GEQDSK.CPASMA` does match `\ipmhd` exactly, while
 `MEASUREMENTS.CPASMA` -- the one this table maps -- does not.) Say "the table
 maps X, which is a related but distinct signal", never "they are the same".
 
-**2. Always surface the COCOS caution when present.** 22 fields carry a
+**2. Do not infer what a field means from its name.** Field names in this table
+are internal identifiers, not descriptions. Report the mapping; state a
+physical interpretation only if the row's `summary` says so.
+
+Verified 2026-08-03, twice on the same run: an answer described
+`equilibrium._cpasma_cocos` as "the sign-corrected variant" purely from the
+`_cocos` suffix. It is not -- upstream, `_cpasma_cocos` and `_bcentr` are
+*inputs to* `identify_cocos_from_signals(bcentr, cpasma)`, which reads the
+signs of Bt and Ip to work out **which** COCOS convention the source data is
+in. It is convention *detection*, not a corrected output. The same answer also
+labelled `global_quantities.ip` "the fitted output of the equilibrium solve",
+which the code does not support: upstream `_compose_ip_measured` reads
+`MEASUREMENTS.PLASMA` and `_compose_ip_reconstructed` reads
+`MEASUREMENTS.CPASMA`, so the CPASMA node this table maps is the
+*reconstructed* current.
+
+This is the same failure mode `d3d-shot-fetcher` warns about for DIII-D tag
+names, and it applies to IMAS/internal names too.
+
+**3. Always surface the COCOS caution when present.** 22 fields carry a
 `cocos_transform`. DIII-D and IMAS use different sign/orientation conventions,
 so presenting a raw DIII-D value under the IMAS name can give a
 **sign-flipped** number -- correct magnitude, correct units, wrong sign, and
 nothing catches it automatically. If the row has `cocos_warning`, state it in
 the answer; do not bury it.
 
-**3. Report verification status, don't imply certainty.** Each row records
+**4. Report verification status, don't imply certainty.** Each row records
 whether it was confirmed by actually fetching it and on which shots. Say
 "verified on shots …" rather than presenting every row as equally certain.
 Rows with `verified: false` carry a `caution` field -- repeat it.
 
-**4. Mappings are time-scoped.** Availability changes across DIII-D's history:
+**5. Mappings are time-scoped.** Availability changes across DIII-D's history:
 diagnostics were added and retired, and sampling rates changed by up to 100x
 for the same signal. Pass `shot=` when the user mentions one, and report
 `verified_for_shot`. A mapping verified on recent shots may not hold for a
 1990s shot.
 
-**5. Rows with `parameterized: true` are templates, not names.** They need a
+**6. Rows with `parameterized: true` are templates, not names.** They need a
 channel or system argument (`required_parameters` lists which). Don't present
 `\ECE::TOP.TECE.TECE{01-NUMCH}` as if it were a fetchable signal.
 
-**6. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
+**7. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
 the complete IMAS standard. If something is absent, that means it is absent
 from *this table*, not that it doesn't exist in IMAS.
 
@@ -145,7 +163,7 @@ from *this table*, not that it doesn't exist in IMAS.
 |---|---|
 | `mds_path`, `tree` | the DIII-D signal, ready to hand to `d3d-shot-fetcher` |
 | `ptdata_pointname` | set when the source is PTDATA rather than an MDSplus tree |
-| `cocos_transform` | sign/orientation conversion required (see rule 2) |
+| `cocos_transform` | sign/orientation conversion required (see rule 3) |
 | `unit_transform` | inline unit conversion, e.g. `/1000.` for ms -> s |
 | `verified`, `verified_on_shots` | whether a real fetch succeeded, and where |
 | `confidence` | `documented` > `literal` > `derived` > `template` |
