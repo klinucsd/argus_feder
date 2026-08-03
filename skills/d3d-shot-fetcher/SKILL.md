@@ -107,6 +107,82 @@ kernel -- it runs as a subprocess, where nothing can render, and it exits 0
 looking successful (verified 2026-08-02: `cd <dir> && python plot.py` produced
 no chart, no error, no warning).
 
+## Start from this script -- it is verified and covers every API you need
+
+Copy this and change the signals. It is a real script that was run end to end
+on 2026-08-02 against shot 165920; the output below is its actual output. It
+deliberately fetches BOTH an MDSplus tree signal and a PTDATA signal, because
+mixing up those two APIs is the most common failure in practice.
+
+```python
+"""Canonical DIII-D fetch: MDSplus tree signals AND PTDATA in one script."""
+import numpy as np
+
+# Two DIFFERENT packages -- this is the single most common mistake:
+#   toksearch      -> Pipeline, MdsSignal, ZarrSignal, Signal, MdsTreePath
+#   toksearch_d3d  -> PtDataSignal
+from toksearch import Pipeline, MdsSignal
+from toksearch_d3d import PtDataSignal
+
+
+def create_pipeline(shots):
+    pipe = Pipeline(shots)
+
+    # MDSplus tree signal: expression and tree are POSITIONAL, in that order.
+    pipe.fetch("ip_efit", MdsSignal(r"\ipmhd", "efit01"))
+
+    # PTDATA: different class, and NO tree argument at all.
+    pipe.fetch("ip_ptdata", PtDataSignal("ip"))
+
+    # Drop any record whose fetches errored, before the results loop.
+    @pipe.where
+    def no_errors(rec):
+        return not rec.errors
+
+    return pipe
+
+
+def main():
+    # fetch() mutates the pipeline and returns None -- never chain off it.
+    results = create_pipeline([165920]).compute_serial()
+
+    for rec in results:
+        for name in ("ip_efit", "ip_ptdata"):
+            sig = rec[name]                       # a dict, not a bare array
+            data = np.asarray(sig["data"])
+            times = np.asarray(sig["times"])
+            units = sig["units"]["data"]
+            print(f"shot {rec['shot']} {name}: {data.size} samples, "
+                  f"peak {data.max():.4e} {units}, "
+                  f"t {times[0]:.1f}..{times[-1]:.1f} ms")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Actual output (`fdp run python /abs/path/script.py`):
+```
+shot 165920 ip_efit: 303 samples, peak 1.1299e+06 A, t 100.0..6380.0 ms
+shot 165920 ip_ptdata: 30720 samples, peak 1.1524e+06 amps, t -996.0..14363.5 ms
+```
+
+Note the two sources report units differently (`A` vs `amps`) and disagree on
+peak by ~2% -- expected, they are different diagnostics (see the PTDATA section
+below), not an error.
+
+### Wrong forms that have actually been attempted -- and what they raise
+
+| Wrong | Right | Actual error |
+|---|---|---|
+| `from toksearch import PtDataSignal` | `from toksearch_d3d import PtDataSignal` | `ImportError: cannot import name 'PtDataSignal' from 'toksearch'` |
+| `import toksearch.mds` / `toksearch.signals` | `from toksearch import MdsSignal` | `ModuleNotFoundError` (both; the real submodule is `toksearch.signal`) |
+| `pipe.compute(as_records=True)` | `pipe.compute_serial()` | `TypeError` |
+| `rec.get("errors")` | `rec.errors` | `TypeError: ... missing 1 required positional argument: 'default'` |
+| `rec.has_error("x")` | `"x" in rec.errors` | `AttributeError` -- no such method |
+| `sig.shot()` | shot comes from `rec["shot"]` | `AttributeError` |
+| `MdsSignal(expression=..., tree=...)` | `MdsSignal(r"\ipmhd", "efit01")` | wrong kwarg names; the real signature is `MdsSignal(expression, treename, location=None, dims=("times",), ...)` |
+
 ## Data access constraints
 
 Data comes from the Pelican mirror. MDSplus tree paths for ALL DIII-D trees are
@@ -282,9 +358,12 @@ Shot 191744: kappa 1.426 - 1.950, 254 time points
 `@pipe.where` filter above already removed error records, `results` only
 contains clean ones.** If you do add your own extra check anyway, `res` is a
 `Record`-like object, not a plain dict: use `res.errors` (attribute access,
-same as the filter above), never `res.get("errors")` -- `Record` has no
-`.get()` method and that call fails at runtime (verified 2026-08-02, cost a
-live debugging round-trip fixing exactly this).
+same as the filter above). `res.get("errors")` fails at runtime -- `Record.get`
+exists but its signature is `get(key, default)` with BOTH arguments required,
+so the usual one-argument dict form raises
+`TypeError: Record.get() missing 1 required positional argument: 'default'`.
+Use `res.errors`, or `res.get("errors", None)` if you really want `.get`
+(verified 2026-08-02).
 
 ## Accessing fetched data
 
