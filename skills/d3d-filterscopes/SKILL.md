@@ -117,7 +117,11 @@ else:
     data = np.asarray(sig["data"])  # extract the array
     times = np.asarray(sig["times"])
     dt = np.median(np.diff(times))  # times are in ms for this signal
-    print(f"samples={data.size}  rate={1e3/dt:.1f} kHz  span={times[-1]-times[0]:.1f} ms")
+    # dt is in MILLIseconds, so 1/dt is already kHz -- do NOT write 1e3/dt and
+    # call it kHz, that yields Hz and reports the rate 1000x too high
+    # (verified 2026-08-02: the old example printed "49952.5 kHz" for a real
+    # ~50 kHz trace; a live run caught it and had to self-correct).
+    print(f"samples={data.size}  rate={1/dt:.2f} kHz  span={times[-1]-times[0]:.1f} ms")
 ```
 
 ## Checking which shots have a filterscope signal archived
