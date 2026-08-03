@@ -176,18 +176,34 @@ for the same signal. Pass `shot=` when the user mentions one, and report
 `verified_for_shot`. A mapping verified on recent shots may not hold for a
 1990s shot.
 
-**6. PTDATA rows fetch differently -- check `source_kind`.** 14 fields come
+**6. Check `resolution_partial` and `composed` before calling a path "the"
+DIII-D signal.** Two flags qualify how solid a row's provenance is:
+
+- `resolution_partial: true` (20 rows) -- part of the field's provenance could
+  not be resolved upstream, so the path shown may be a **secondary dependency
+  rather than the quantity itself**. Repeat `caution_partial`; do not present
+  it as the mapping. Verified 2026-08-03:
+  `core_profiles.profiles_1d.grid.psi` reported `\EFIT01::TOP.RESULTS.GEQDSK.GTIME`
+  -- the EFIT *time base*, not a flux array -- because its real psi source
+  (`core_profiles.profiles_1d._omfit_psi`) is unresolved. An answer rationalised
+  that as "it provides the time coordinate for the grid" instead of flagging it.
+  If a returned path looks like the wrong kind of quantity, check this flag
+  rather than inventing a reason it makes sense.
+- `composed: true` (95 rows) -- the field is built from SEVERAL nodes, listed
+  in `component_paths`. Say "composed from N nodes", not "the DIII-D signal is X".
+
+**7. PTDATA rows fetch differently -- check `source_kind`.** 14 fields come
 from PTDATA rather than an MDSplus tree. Those rows have `source_kind:
 "ptdata"`, a `ptdata_pointname`, and **no `mds_path` and no `tree`**. Fetch
 them with `PtDataSignal(pointname)` and no tree argument, via `fdp run`
 (PTDATA does not work in-kernel). Every row carries `fetch_with` --
 `MdsSignal` or `PtDataSignal` -- so use that rather than assuming.
 
-**7. Rows with `parameterized: true` are templates, not names.** They need a
+**8. Rows with `parameterized: true` are templates, not names.** They need a
 channel or system argument (`required_parameters` lists which). Don't present
 `\ECE::TOP.TECE.TECE{01-NUMCH}` as if it were a fetchable signal.
 
-**8. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
+**9. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
 the complete IMAS standard. If something is absent, that means it is absent
 from *this table*, not that it doesn't exist in IMAS.
 
@@ -213,6 +229,8 @@ from *this table*, not that it doesn't exist in IMAS.
 
 | field | meaning |
 |---|---|
+| `composed`, `component_paths` | field is built from several nodes |
+| `resolution_partial`, `caution_partial` | provenance incomplete -- path may be secondary |
 | `source_kind` | `mdsplus` or `ptdata` -- they fetch differently |
 | `fetch_with` | `MdsSignal` or `PtDataSignal` |
 | `mds_path`, `tree` | the DIII-D signal (MDSplus rows only; null for PTDATA) |
