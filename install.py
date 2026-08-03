@@ -109,6 +109,7 @@ for skill_name, files in {
     "d3d-filterscopes": ["SKILL.md"],
     "d3d-relational-db": ["SKILL.md", "d3d_relational_db.py"],
     "signal-zoom": ["SKILL.md", "signal_zoom_colab.py"],
+    "d3d-imas-terms": ["SKILL.md", "d3d_imas_terms.py", "imas_d3d_lookup.json"],
 }.items():
     dest = skills_dir / skill_name
     dest.mkdir(parents=True, exist_ok=True)
