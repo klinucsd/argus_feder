@@ -32,8 +32,8 @@ symbol name given, querying the shot-metadata database, fetching from PTDATA
 (a separate raw-digitizer source), and looking up signal meanings, MDSplus
 paths and IMAS names.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge-large.svg)](examples/jupyterhub/argus_feder_pelican_database_ptdata_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge-large.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb)
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_pelican_database_ptdata_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb)
 
 ### FEDER competency questions (Q5, Q7, Q9) and interactive charts
 
@@ -44,8 +44,8 @@ sampling rate resolves individual ELMs (Q9). Also demonstrates the opt-in
 zoomable Plotly chart, needed to see individual ELM spikes in a ~400,000-point
 trace, and a proof-of-concept aggregation query across a shot range.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge-large.svg)](examples/jupyterhub/argus_feder_q5_q7_q9_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge-large.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_q5_q7_q9_colab.ipynb)
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_q5_q7_q9_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_q5_q7_q9_colab.ipynb)
 
 ## Running on JupyterHub
 
