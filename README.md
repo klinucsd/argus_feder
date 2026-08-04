@@ -47,6 +47,21 @@ trace, and a proof-of-concept aggregation query across a shot range.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_q5_q7_q9_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_q5_q7_q9_colab.ipynb)
 
+### IMAS ↔ DIII-D terminology
+
+Translating between IMAS — the device-neutral standard vocabulary used across
+fusion machines and by ITER — and DIII-D's own historical signal names, in both
+directions. The mapping is extracted from GA's
+[`imas_composer`](https://github.com/GA-FDP/imas_composer) (Apache-2.0) and every
+entry was checked by actually fetching it across shots spanning more than two
+decades of machine operation. The notebook also exercises what a plain name-pair
+table gets wrong: sign conventions that differ between the two vocabularies,
+availability that changes over the machine's history, fields whose provenance is
+incomplete, and mistyped input.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_imas_d3d_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_imas_d3d_colab.ipynb)
+
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
