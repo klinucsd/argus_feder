@@ -121,9 +121,18 @@ def imas_to_d3d(imas_path: str, shot: int | None = None,
             out["verified_for_shot"] = shot in ok
             if ok:
                 out["verified_shot_range"] = [min(ok), max(ok)]
-        if verified_only and not out.get("verified"):
-            out["caution"] = ("This mapping was extracted but never fetched "
-                              "successfully; treat it as unconfirmed.")
+        if not out.get("verified"):
+            # "never attempted" and "attempted and failed" are different claims.
+            if out.get("verification_status") == "not_attempted":
+                out["caution"] = (
+                    "NOT ATTEMPTED, not failed: the verifier skips paths that "
+                    "need a channel/system argument, so this mapping was never "
+                    "tested. It may well work once a parameter is supplied -- "
+                    "say it is untested, not that it failed.")
+            else:
+                out["caution"] = (
+                    "Attempted and FAILED on every shot tried; treat as "
+                    "unconfirmed. See last_error.")
         return out
     return None
 
@@ -195,6 +204,7 @@ def d3d_to_imas(signal: str, tree: str | None = None) -> list[dict]:
                 "mds_path": row.get("mds_path"),
                 "tree": row.get("tree"),
                 "verified": row.get("verified"),
+                "verification_status": row.get("verification_status"),
                 "verified_on_shots": row.get("verified_on_shots"),
                 "confidence": row.get("confidence"),
                 "ids": row.get("ids"),
@@ -235,6 +245,7 @@ def search(term: str, limit: int = 20) -> list[dict]:
                 "tree": row.get("tree"),
                 "ids": row.get("ids"),
                 "verified": row.get("verified"),
+                "verification_status": row.get("verification_status"),
                 "verified_on_shots": row.get("verified_on_shots"),
                 "confidence": row.get("confidence"),
             }

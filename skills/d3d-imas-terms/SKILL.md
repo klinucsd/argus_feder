@@ -165,10 +165,20 @@ so presenting a raw DIII-D value under the IMAS name can give a
 nothing catches it automatically. If the row has `cocos_warning`, state it in
 the answer; do not bury it.
 
-**4. Report verification status, don't imply certainty.** Each row records
-whether it was confirmed by actually fetching it and on which shots. Say
-"verified on shots …" rather than presenting every row as equally certain.
-Rows with `verified: false` carry a `caution` field -- repeat it.
+**4. Report verification status, and distinguish its THREE states.** Read
+`verification_status`, not just the `verified` boolean:
+
+| status | count | what it means | how to say it |
+|---|---|---|---|
+| `verified` | 258 | fetched successfully | "verified on shots …" |
+| `failed` | 16 | tried on all 8 shots, errored every time | "attempted and failed; see `last_error`" |
+| `not_attempted` | 20 | **never tested** -- the verifier skips paths needing a channel/system argument | "untested, not failed -- it may work once a parameter is supplied" |
+
+Verified 2026-08-03: `ece.channel.t_e.data` reads as unverified, and an answer
+reported it as "never fetched successfully" -- implying a failed attempt. It
+was simply never tried, and fetches perfectly as `\ECE::TOP.TECE.TECE01`
+(65,536 samples, -0.008..2.84 keV). Never describe a `not_attempted` row as
+having failed.
 
 **5. Mappings are time-scoped.** Availability changes across DIII-D's history:
 diagnostics were added and retired, and sampling rates changed by up to 100x
@@ -238,6 +248,7 @@ from *this table*, not that it doesn't exist in IMAS.
 | `cocos_transform` | sign/orientation conversion required (see rule 3) |
 | `unit_transform` | inline unit conversion, e.g. `/1000.` for ms -> s |
 | `verified`, `verified_on_shots` | whether a real fetch succeeded, and where |
+| `verification_status` | `verified` / `failed` / `not_attempted` -- not the same thing |
 | `confidence` | `documented` > `literal` > `derived` > `template` |
 | `resolved_via` | the internal chain, when the field has no direct path |
 | `parameterized`, `required_parameters` | needs a channel/system argument |
