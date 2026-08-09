@@ -5,7 +5,8 @@ your session once. This installs, silently unless something goes wrong:
   1. DIII-D data access (TokSearch + Pelican)
   2. Your Pelican token, from the Colab Secret named FDP_TOKEN
   3. The ARGUS agent (%%ask)
-  4. The DIII-D skills (fetch signals, look up shot metadata)
+  4. The DIII-D skills (fetch signals, look up shot metadata, query the
+     stored ELM label index)
 
 If anything fails, this prints a clear, specific message naming exactly
 what's wrong -- no silent failures.
@@ -110,6 +111,7 @@ for skill_name, files in {
     "d3d-relational-db": ["SKILL.md", "d3d_relational_db.py"],
     "signal-zoom": ["SKILL.md", "signal_zoom_colab.py"],
     "d3d-imas-terms": ["SKILL.md", "d3d_imas_terms.py", "imas_d3d_lookup.json"],
+    "d3d-elm-index": ["SKILL.md", "d3d_elm_index.py"],
 }.items():
     dest = skills_dir / skill_name
     dest.mkdir(parents=True, exist_ok=True)
