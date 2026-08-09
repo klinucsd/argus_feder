@@ -35,17 +35,22 @@ paths and IMAS names.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_pelican_database_ptdata_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb)
 
-### FEDER competency questions (Q5, Q7, Q9) and interactive charts
+### FEDER ELM competency questions
 
-FEDER's ELM data-discovery competency questions answered in plain English —
-which D-alpha filterscope pointnames exist and where each lives (Q5), which
-shots in a range have the filterscope signal archived (Q7), and whether the
-sampling rate resolves individual ELMs (Q9). Also demonstrates the opt-in
-zoomable Plotly chart, needed to see individual ELM spikes in a ~400,000-point
-trace, and a proof-of-concept aggregation query across a shot range.
+FEDER's ELM competency questions answered in plain English, from a stored index
+of ELM labels: what each detector defines as an ELM and at which parameters
+(Q2), which D-alpha filterscope channels a shot has and at what sampling rate
+(Q5, Q7, Q9), where two detectors and a domain expert disagree on the same
+discharge (Q12), when the plasma was ELMing and when ELM activity was absent
+(Q3), and what a candidate ELM training set would contain (Q4, Q11).
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_q5_q7_q9_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_q5_q7_q9_colab.ipynb)
+The notebook also asks questions the list does not cover, and two whose correct
+answer is a refusal — a shot nobody has analysed, and a population statistic the
+sample cannot support. A confident number in either case would be a failure, not
+a success.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_index_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_index_colab.ipynb)
 
 ### IMAS ↔ DIII-D terminology
 
