@@ -1315,3 +1315,52 @@ def events_by_regime(shot, detector_run=None, regime_run=None):
         "n_outside_any_labelled_regime": unlabelled,
         "assignment": "each event assigned by its midpoint",
     }
+
+
+def regime_summary(shot, regime_run=None, discharge_ms=6000.0):
+    """Time spent in each hand-labelled regime on one shot, overlaps resolved.
+
+    The windows OVERLAP -- narrow ELMy intervals are nested inside broad
+    quiescent spans -- so adding their raw durations double-counts the nested
+    time. On shot 163518 the raw quiescent sum is 3830 ms against an exclusive
+    3516 ms: a 314 ms error, and one that reads as plausible.
+
+    Every instant is assigned to exactly one regime (the narrowest window
+    covering it), so the returned durations sum to the labelled time and the
+    remainder is genuinely unlabelled.
+
+    `unlabelled_ms` asserts nothing about the plasma. It is NOT L-mode: the
+    source's `MODE_INFO` line "L, LMODE background (not labeled)" means L-mode
+    was never marked, not that unmarked time is L-mode. Ramp-up, ramp-down and
+    any state the labeller skipped all land here.
+    """
+    wins = regime_windows(shot, regime_run)
+    meta = {r["run_id"]: r for r in runs()}
+    rid = regime_run or next(r for r in runs() if _run_kind(r) == KIND_REGIME)["run_id"]
+    quiescent = set(_run_meta(meta[rid])["quiescent_classes"])
+
+    edges = sorted({e for w in wins for e in (w["start_ms"], w["end_ms"])})
+    exclusive = {}
+    for a, b in zip(edges, edges[1:]):
+        w = _regime_at(wins, (a + b) / 2.0)
+        if w:
+            exclusive[w["regime"]] = exclusive.get(w["regime"], 0.0) + (b - a)
+
+    labelled = sum(exclusive.values())
+    quiet = sum(v for k, v in exclusive.items() if k in quiescent)
+    elmy = labelled - quiet
+    span = max(discharge_ms, max(edges) if edges else 0.0)
+    return {
+        "shot": shot,
+        "by_regime_ms": {k: round(v, 1) for k, v in
+                         sorted(exclusive.items(), key=lambda kv: -kv[1])},
+        "elmy_ms": round(elmy, 1),
+        "quiescent_ms": round(quiet, 1),
+        "labelled_ms": round(labelled, 1),
+        "unlabelled_ms": round(span - labelled, 1),
+        "elmy_percent_of_labelled": round(100 * elmy / labelled, 1) if labelled else None,
+        "elmy_percent_of_discharge": round(100 * elmy / span, 1) if span else None,
+        "overlaps_resolved": "each instant assigned to the narrowest covering window",
+        "unlabelled_note": ("asserts nothing -- NOT L-mode; the labeller simply "
+                            "marked no regime for this time"),
+    }

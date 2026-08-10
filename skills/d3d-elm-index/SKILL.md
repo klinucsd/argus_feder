@@ -54,14 +54,15 @@ from d3d_elm_index import (
     is_indexed, shot_status, elm_windows, elm_bursts, was_elmy_at,
     elm_statistics, find_shots,
     signal_availability, shots_with_signals, coverage_summary,
-    compare_runs, ShotNotIndexed,
-    # ground truth and cross-method comparison (rules 9 and 10)
+    compare_runs, fetch_estimate, locate_elm_db, ShotNotIndexed,
+    # ground truth and cross-method comparison -- rules 9, 9b, 10
     label_sets, regime_windows, regime_at, compare_on_shot, plot_comparison,
     shots_with_multiple_sources, firing_rate_by_regime, events_by_regime,
+    regime_summary,
 )
 ```
 
-## The ten rules, in one place
+## The eleven rules, in one place
 
 Read the rule that applies before answering. Each is spelled out below.
 
@@ -73,14 +74,17 @@ Read the rule that applies before answering. Each is spelled out below.
    subset, not a census.
 4. **Report a detector's parameters, never guess its algorithm** -- the code is
    not in this image.
-5. **A `labeled` status does NOT mean the discharge was ELMy** -- it means
-   D-alpha transients were detected. Never report a fraction of shots that
-   "are ELMy".
+5. **A label is an assertion by its producer, not a guarantee** -- a `labeled`
+   status means D-alpha transients were detected, and a regime class means a
+   labeller called the phase that. Never report a fraction of shots that "are
+   ELMy", and never write "no ELMs occurred here by definition".
 6. **Check `signal_snr`** -- it is dB and can be negative; the detector picks
    the best available channel, not a good one.
 7. **Every time is milliseconds** -- 0-6000 is 6 seconds.
-8. **When the index falls short, offer a fetch with a cost** -- do not stop at
-   "unknown", and do not fetch unprompted.
+8. **When the index falls short, offer a fetch with a cost, and put the offer
+   last** -- give the real numbers, end the answer with the offer so the reply
+   is the next thing, and wait. Closing on "this cannot be determined" is wrong
+   whenever the measurement is one question away.
 9. **The index holds ground truth as well as detector output** -- never present
    a hand-labelled run as a detector result, or vice versa. Call
    `label_sets()`.
@@ -142,6 +146,29 @@ two runs would otherwise be ambiguous. Provenance still matters -- say which
 detector and which settings produced a number -- but say it in words a
 scientist uses.
 
+## Rule 9: the index holds ground truth, not just detector output
+
+Some runs are hand-labelled by a domain expert. They are the yardstick, not
+another opinion. `label_sets()` says which is which:
+
+```python
+X.label_sets()["runs"]
+# run 1  slope_outlier     interval  elm_events      10840 shots  detector      [default]
+# run 2  slope_outlier     burst     elm_events      10840 shots  detector      [default]
+# run 3  human_regime      interval  regime_windows    397 shots  GROUND TRUTH
+# run 4  human_elm_events  burst     elm_events         23 shots  GROUND TRUTH
+# run 5  omfit_elm         burst     elm_events         23 shots  detector
+```
+
+Ground-truth runs are **scoped**: they cover only the shots and time windows a
+person actually labelled. Outside that scope they assert nothing -- absence is
+Rule 1 again, more sharply.
+
+Runs 1 and 2 are the blessed defaults. There is no implicit fallback: a query
+with no `run_id` uses the blessed run or raises. It never silently picks the
+newest, which would have quietly narrowed every answer to 23 shots once these
+comparison runs were added.
+
 ## Rule 9b: answer ELM counts from stored labels, never from new detection code
 
 **When asked how many ELMs a shot had:**
@@ -166,29 +193,6 @@ were wrong: the fetch was not offered first, and the count had no provenance.
 
 If a question needs detection that does not exist yet, the honest answer names
 what is missing and stops there.
-
-## Rule 9: the index holds ground truth, not just detector output
-
-Some runs are hand-labelled by a domain expert. They are the yardstick, not
-another opinion. `label_sets()` says which is which:
-
-```python
-X.label_sets()["runs"]
-# run 1  slope_outlier     interval  elm_events      10840 shots  detector      [default]
-# run 2  slope_outlier     burst     elm_events      10840 shots  detector      [default]
-# run 3  human_regime      interval  regime_windows    397 shots  GROUND TRUTH
-# run 4  human_elm_events  burst     elm_events         23 shots  GROUND TRUTH
-# run 5  omfit_elm         burst     elm_events         23 shots  detector
-```
-
-Ground-truth runs are **scoped**: they cover only the shots and time windows a
-person actually labelled. Outside that scope they assert nothing -- absence is
-Rule 1 again, more sharply.
-
-Runs 1 and 2 are the blessed defaults. There is no implicit fallback: a query
-with no `run_id` uses the blessed run or raises. It never silently picks the
-newest, which would have quietly narrowed every answer to 23 shots once these
-comparison runs were added.
 
 ## Rule 10: kind, not just granularity -- and clip the window
 
@@ -225,6 +229,26 @@ X.compare_on_shot(180445)      # a no-plasma control shot
 **Report a crashed detector's zero as a failure, never as agreement.**
 
 Regime context, when the shot has it:
+
+**To report how long a shot spent in each regime, call `regime_summary(shot)`.**
+Adding the raw window durations double-counts the nested intervals -- on shot
+163518 that turns 3516 ms of quiescent time into 3830.
+
+```python
+X.regime_summary(163518)
+# {'by_regime_ms': {'WPQH': 2235.0, 'QH': 1281.0, 'ELMy H': 361.0},
+#  'elmy_ms': 361.0, 'quiescent_ms': 3516.0, 'labelled_ms': 3877.0,
+#  'unlabelled_ms': 2123.0,
+#  'elmy_percent_of_labelled': 9.3, 'elmy_percent_of_discharge': 6.0,
+#  'unlabelled_note': 'asserts nothing -- NOT L-mode; ...'}
+```
+
+**Unlabelled time is not L-mode.** The source's `MODE_INFO` line
+`"L", LMODE background (not labeled)` means L-mode was never marked -- not that
+unmarked time is L-mode. Ramp-up, ramp-down and anything the labeller skipped
+land in the same gap. Report it as "no regime was marked here", and give both
+percentages when quoting a fraction, since "6% of the discharge" and "9.3% of
+the labelled time" are different claims.
 
 ```python
 X.regime_windows(163518)[:2]
@@ -485,7 +509,22 @@ Two plausible inventions have already reached a reviewer this way:
 Both were stated confidently and both were wrong. "The parameters are X; the
 algorithm is documented at <repo>@<commit>" is the complete, correct answer.
 
-## Rule 5: `labeled` does not mean the discharge was ELMy
+## Rule 5: a label is an assertion by its producer, not a guarantee
+
+Every label in this index -- detector or human -- records that someone or
+something **asserted** a state over an interval. It does not guarantee the
+physics held throughout, and it does not exclude what the producer did not look
+for. Write "the expert marked this phase quiescent", never "no ELMs occurred
+here by definition".
+
+The evidence is in the data itself: narrow ELMy intervals are labelled *inside*
+broad quiescent spans on the same shot, and one hand-labelled case is described
+as "QH mode broken by ELM clusters". A regime class names the dominant
+behaviour a labeller saw, not an impossibility proof. The same applies to
+`none_found`: it means the detector ran and found nothing, not that the
+discharge was quiet.
+
+### `labeled` does not mean the discharge was ELMy
 
 This is the most important limitation of the label set, and the one most likely
 to produce a confident wrong answer.
@@ -592,7 +631,7 @@ query_elm_index("""SELECT signal_used, COUNT(*) n FROM elm_run_shots
 Note this aggregate is skewed by the index's non-uniform sampling (Rule 3), and
 the preferred channel also drifts with shot era.
 
-### Rule 6: check `signal_snr` before trusting a shot's labels
+## Rule 6: check `signal_snr` before trusting a shot's labels
 
 `signal_snr` is in **dB and can be negative**. The detector picks the *best
 available* channel, not a *good* one, and labels the shot regardless. In the
@@ -616,7 +655,7 @@ aggregate statistics.
 `signal_snr` can also be `inf` (a channel with no measurable noise); guard
 against it in arithmetic.
 
-### Rule 7: every time in this index is in MILLISECONDS
+## Rule 7: every time in this index is in MILLISECONDS
 
 `start_time`, `end_time`, `t_start`, `t_end`, `elmy_duration_ms`,
 `first_elm_ms` -- all milliseconds. A full discharge runs 0 to ~6000, which is
@@ -648,6 +687,14 @@ cost is worse than a big number.
 
 Do not fetch unprompted -- fetching is slow and metered, and the user may not
 want it. But always price it.
+
+**Put the offer last.** When an answer contains both limitations and an offer,
+the offer is the final thing written, after any closing summary. A question
+that asks what the data cannot do invites a summary of limits, and an offer
+placed above that summary is buried: the reader's last impression is a dead
+end. "X cannot be determined from these labels" as a closing line is wrong
+whenever the measurement is one question away -- close instead with what you
+can do about it, and stop there so the reply is the next thing.
 
 Use `fetch_estimate()` so the numbers are measured, not guessed:
 
@@ -715,6 +762,42 @@ with `is_indexed()` before saying a shot is or is not covered** -- this document
 is not a list of which shots are indexed, and it goes stale as the index grows.
 
 To actually perform the fetch once the user says yes, use `d3d-filterscopes`.
+
+### RMP suppression: what to offer
+
+No run in this index labels RMP suppression, so when a question turns on it,
+Rule 8 applies: say what the labels do cover, then make the offer, and put it
+last. For example:
+
+> No expert marked RMP suppression for this shot. I can fetch the twelve I-coil
+> currents -- about 2.3 seconds -- and show you when they were energised.
+> Shall I?
+
+DIII-D's twelve non-axisymmetric (I-)coils are **PTDATA pointnames**, fetched
+with `PtDataSignal` through `d3d-shot-fetcher`:
+
+```
+IU30  IU90  IU150  IU210  IU270  IU330
+IL30  IL90  IL150  IL210  IL270  IL330
+```
+
+Measured cost, shot 158115: **all twelve in 2.3 s, 125.7 MB decoded; one coil
+in 0.2 s, 10.5 MB.** About 1.3 million samples per coil, in amps, on a
+millisecond time base.
+
+Two things to state when reporting what comes back:
+
+**The current is the measurement; "suppression" is an interpretation.** Report
+the coil currents and their time intervals. Deciding how many amps counts as
+energised is a judgement for the facility, not one to make here — see Rule 9b,
+which applies to regimes exactly as it applies to ELM counts. A threshold taken
+relative to each shot's own maximum is demonstrably wrong: it marks a QH-mode
+discharge, peaking at 1,537 A, as energised almost throughout, while a genuine
+RMP case peaks near 4,300 A.
+
+**These coils are in PTDATA, not in the MDSplus `operations` tree.** Querying
+that tree returns `TreeNODATA` for most shots, which reads as "the archive does
+not have it" and is wrong. We reported RMP as blocked on that basis for weeks.
 
 ### Signal availability, independent of any detector
 
