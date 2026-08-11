@@ -52,12 +52,13 @@ a success.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_index_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_index_colab.ipynb)
 
-### Using ELM timing to make a slow diagnostic usable
+### Sorting measurements by where they fall in the ELM cycle
 
 An analysis rather than a question: ARGUS uses stored ELM event times to sort
 Thomson scattering measurements by where they fall in the ELM cycle, then shows
-what an average over everything hides. Thomson samples on its own clock, so each
-profile lands at an arbitrary point in the cycle — the naive average blends
+what an average over everything hides. Thomson samples on its own clock — about
+eight times faster than the ELMs, but unsynchronised with them — so each profile
+lands at an arbitrary point in the cycle, and the naive average blends
 crash-phase and recovered plasma into a state the discharge never holds. The
 notebook picks a suitable discharge from the stored labels, checks the event
 times against a domain expert's before trusting them, and reports where in the

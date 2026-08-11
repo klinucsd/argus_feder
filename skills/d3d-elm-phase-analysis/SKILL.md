@@ -1,9 +1,9 @@
 ---
 name: d3d-elm-phase-analysis
-description: "Use stored ELM event times to filter or phase-sort a slower DIII-D diagnostic, so measurements taken at different points in the ELM cycle are not averaged together. Use for: ELM-synchronised or conditionally averaged profiles, selecting pre-ELM or recovered-pedestal samples, relating Thomson/CER/ECE/bolometry samples to the ELM cycle, and deciding which ELM label set an analysis should be built on. Composes d3d-elm-index (event times, phase) with d3d-shot-fetcher (the diagnostic itself)."
+description: "Use stored ELM event times to filter or phase-sort a DIII-D diagnostic that is not synchronised with the ELMs, so measurements taken at different points in the ELM cycle are not averaged together. Use for: ELM-synchronised or conditionally averaged profiles, selecting pre-ELM or recovered-pedestal samples, relating Thomson/CER/ECE/bolometry samples to the ELM cycle, and deciding which ELM label set an analysis should be built on. Composes d3d-elm-index (event times, phase) with d3d-shot-fetcher (the diagnostic itself)."
 ---
 
-# d3d-elm-phase-analysis -- ELM-relative analysis of a slower diagnostic
+# d3d-elm-phase-analysis -- ELM-relative analysis of another diagnostic
 
 ## The problem this solves
 
@@ -197,7 +197,7 @@ ELMs at all.
 1. **Find a candidate** -- a shot with a long, steady stretch of ELMs and enough
    events to average over. A query over stored event times, not a detector run.
 2. **Validate the event times** on that shot if hand labels exist (Rule 2).
-3. **Fetch the slow diagnostic** (Rule 4). Price it and offer before fetching.
+3. **Fetch the diagnostic** (Rule 4). Price it and offer before fetching.
 4. **Compute phase** for every sample: `elm_phase_at(shot, times)`.
 5. **Filter** with a stated range: `select_by_elm_phase(...)` (Rule 3), and
    compute the ratio across channels rather than at one (Rule 4).
