@@ -1364,3 +1364,140 @@ def regime_summary(shot, regime_run=None, discharge_ms=6000.0):
         "unlabelled_note": ("asserts nothing -- NOT L-mode; the labeller simply "
                             "marked no regime for this time"),
     }
+
+
+def elm_phase_at(shot, times, run_id=None):
+    """Where each of `times` falls in the ELM cycle, from stored event times.
+
+    This is the primitive that makes a slow diagnostic usable. Thomson
+    scattering, CER, ECE and bolometry all sample far slower than ELMs recur, so
+    every measurement lands at an arbitrary point in the cycle; averaging them
+    together smears out exactly the structure being studied. Phase lets you keep
+    only the samples in the part of the cycle you care about.
+
+    Phase follows OMFIT's convention, so results are comparable with the
+    facility's own tooling:
+
+        0.0            an ELM has just ended
+        0 -> 1         the inter-ELM period, rising to 1 just before the next ELM
+        -1 -> 0        during an ELM
+        None           undefined -- before the first event or after the last
+
+    `times` is a scalar or any sequence, in **milliseconds**. Nothing here knows
+    which diagnostic produced them.
+
+    Choose `run_id` deliberately. The default burst run covers the whole index,
+    which is what makes an analysis general; a hand-labelled run covers few
+    shots and only the window a person examined, so keying an analysis on it
+    restricts that analysis to those shots. Use ground truth to CHECK the event
+    times, then use the detector run to do the work -- see the `d3d-elm-phase-analysis`
+    skill.
+    """
+    import numpy as np
+
+    run_id = run_id or _default_run("burst")
+    meta = {r["run_id"]: r for r in runs()}
+    if _run_kind(meta[run_id]) != KIND_ELM_EVENTS:
+        raise ValueError(
+            f"run {run_id} holds {_run_kind(meta[run_id])}, not ELM events. "
+            f"Phase is defined relative to individual events; a regime window "
+            f"is not an event.")
+
+    rows = query_elm_index(
+        "SELECT start_time, end_time FROM elm_labels WHERE run_id = ? AND shot = ? "
+        "ORDER BY start_time", (run_id, shot))
+    if not rows:
+        raise ShotNotIndexed(
+            f"shot {shot} has no ELM events in run {run_id}, so phase is undefined. "
+            f"Check shot_status({shot}) -- the shot may be unanalysed, or analysed "
+            f"and genuinely quiet.")
+
+    s = np.array([r["start_time"] for r in rows], float)
+    e = np.array([r["end_time"] for r in rows], float)
+    t = np.atleast_1d(np.asarray(times, float))
+
+    i = np.searchsorted(s, t, side="right") - 1        # last event starting at/before t
+    have_prev = i >= 0
+    have_next = (i + 1) < len(s)
+    ic = np.clip(i, 0, len(s) - 1)
+
+    prev_start, prev_end = s[ic], e[ic]
+    next_start = np.where(have_next, s[np.clip(i + 1, 0, len(s) - 1)], np.nan)
+    in_elm = have_prev & (t <= prev_end)
+
+    with np.errstate(invalid="ignore", divide="ignore"):
+        inter = next_start - prev_end                  # inter-ELM span
+        during = prev_end - prev_start                 # the ELM itself
+        ph = np.where(~in_elm & (inter > 0), (t - prev_end) / inter, np.nan)
+        ph = np.where(in_elm & (during > 0), (t - prev_end) / during, ph)
+        # A zero-length event still has a defined boundary: call it phase 0.
+        ph = np.where(in_elm & ~(during > 0), 0.0, ph)
+        since = np.where(have_prev, t - prev_end, np.nan)
+        until = np.where(have_next, next_start - t, np.nan)
+
+    covered = have_prev & (have_next | in_elm)
+    ph = np.where(covered, ph, np.nan)
+
+    def clean(a):
+        return [None if not np.isfinite(v) else round(float(v), 4) for v in a]
+
+    return {
+        "shot": shot,
+        "run_id": run_id,
+        "method": _run_meta(meta[run_id])["display_name"],
+        "n_times": int(t.size),
+        "phase": clean(ph),
+        "in_elm": [bool(v) for v in in_elm],
+        "ms_since_last_elm": clean(since),
+        "ms_until_next_elm": clean(until),
+        "covered": [bool(v) for v in covered],
+        "n_in_elm": int(in_elm.sum()),
+        "n_covered": int(covered.sum()),
+        "n_events_used": len(rows),
+        "convention": ("0 just after an ELM, rising to 1 just before the next; "
+                       "-1 to 0 during an ELM; None outside the event span"),
+    }
+
+
+def select_by_elm_phase(shot, times, phase_range=(0.5, 1.0), run_id=None,
+                        min_ms_since_elm=None):
+    """Indices of `times` whose ELM phase falls inside `phase_range`.
+
+    The filtering step, kept here so it is not reinvented per analysis. Returns
+    the surviving indices plus how many were dropped and why, because "how much
+    data did this throw away" is part of the result.
+
+    `phase_range` is a CHOICE, not a default to be trusted: (0.5, 1.0) keeps the
+    later half of the inter-ELM period, a common stand-in for a recovered
+    pedestal. State the range used in any answer, and show the unfiltered case
+    alongside so the effect of the choice is visible.
+
+    `min_ms_since_elm` additionally rejects samples too soon after an event,
+    which matters when two closely-spaced events produce a very short inter-ELM
+    period whose phase still sweeps 0 to 1.
+    """
+    ph = elm_phase_at(shot, times, run_id)
+    lo, hi = phase_range
+    keep, dropped = [], {"in_elm": 0, "outside_phase": 0, "not_covered": 0,
+                         "too_soon_after_elm": 0}
+    for n, (p, in_elm, cov, since) in enumerate(zip(
+            ph["phase"], ph["in_elm"], ph["covered"], ph["ms_since_last_elm"])):
+        if not cov or p is None:
+            dropped["not_covered"] += 1
+        elif in_elm:
+            dropped["in_elm"] += 1
+        elif not (lo <= p <= hi):
+            dropped["outside_phase"] += 1
+        elif min_ms_since_elm is not None and (since is None or since < min_ms_since_elm):
+            dropped["too_soon_after_elm"] += 1
+        else:
+            keep.append(n)
+    return {
+        "shot": shot, "run_id": ph["run_id"], "method": ph["method"],
+        "phase_range": [lo, hi], "min_ms_since_elm": min_ms_since_elm,
+        "n_times": ph["n_times"], "n_kept": len(keep), "keep_indices": keep,
+        "n_dropped": dropped,
+        "fraction_kept": round(len(keep) / ph["n_times"], 4) if ph["n_times"] else None,
+        "caveat": ("phase_range is a scientific choice; report it, and show the "
+                   "unfiltered result alongside"),
+    }

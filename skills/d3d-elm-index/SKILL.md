@@ -58,7 +58,7 @@ from d3d_elm_index import (
     # ground truth and cross-method comparison -- rules 9, 9b, 10
     label_sets, regime_windows, regime_at, compare_on_shot, plot_comparison,
     shots_with_multiple_sources, firing_rate_by_regime, events_by_regime,
-    regime_summary,
+    regime_summary, elm_phase_at, select_by_elm_phase,
 )
 ```
 
@@ -310,6 +310,30 @@ X.events_by_regime(163518)
 Events straddle regime boundaries, so the convention matters: counting shot
 163518 by start time gives 44 -> 46. Use these functions rather than binning by
 hand, and the whole answer stays on one convention.
+
+### Using ELM times to filter another diagnostic
+
+**To work out where a measurement falls in the ELM cycle, call
+`elm_phase_at(shot, times)`; to keep only the samples in part of the cycle, call
+`select_by_elm_phase(...)`.** Slow diagnostics -- Thomson, CER, ECE, bolometry --
+sample far slower than ELMs recur, so every sample lands at an arbitrary phase
+and averaging them smears out the structure being studied.
+
+```python
+X.elm_phase_at(154749, [2600.0, 2600.5])
+# phase 0.7131 / 0.7145, in_elm False, ms_since_last_elm 248.6 / 249.1
+# convention: 0 just after an ELM, rising to 1 just before the next;
+#             -1 to 0 during an ELM; None outside the event span
+
+X.select_by_elm_phase(154749, times, phase_range=(0.5, 1.0))
+# {'n_kept': 104, 'n_times': 185, 'fraction_kept': 0.5622,
+#  'n_dropped': {'in_elm': 9, 'outside_phase': 72, 'not_covered': 0, ...}}
+```
+
+Phase is derived from stored event times -- nothing is cached, and no column
+was added for it. `phase_range` is a scientific choice, not a default to trust.
+Full workflow guidance, including which run to use and how to validate the event
+times first, is in the **`d3d-elm-phase-analysis`** skill.
 
 ### Population scale: does a detector fire when it should?
 
