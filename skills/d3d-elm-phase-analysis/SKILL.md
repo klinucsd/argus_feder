@@ -7,12 +7,24 @@ description: "Use stored ELM event times to filter or phase-sort a slower DIII-D
 
 ## The problem this solves
 
-ELMs recur at tens of hertz. Most diagnostics worth studying are far slower:
-Thomson scattering on DIII-D delivers a profile every few milliseconds, CER
-integrates over milliseconds, ECE profiles are noisy shot to shot. So **every
-individual measurement lands at an arbitrary point in the ELM cycle** -- some
-mid-crash, some in a fully recovered pedestal -- and averaging them together
-smears out the very structure being studied.
+ELMs recur at tens of hertz and are not scheduled. Diagnostics sample on their
+own clocks, unrelated to when an ELM happens, so **every measurement lands at an
+arbitrary point in the ELM cycle** -- some mid-crash, some in a fully recovered
+pedestal -- and averaging them together smears out the very structure being
+studied.
+
+**This is a synchronisation problem, not a slowness problem, and saying
+otherwise is wrong.** On shot 169908 the ELM rate is 27.5 Hz (36 ms period)
+while Thomson runs at about 233 Hz (4.29 ms): the diagnostic is roughly 8.5
+times *faster* than the ELMs. What makes the analysis necessary is that it is
+unsynchronised, and that 8.5 samples per cycle -- about one during the crash --
+is far too coarse to characterise a cycle from any single instance. Samples must
+be pooled across many cycles, and pooling requires each sample's phase.
+
+The regime where this matters is a diagnostic comparable to or somewhat faster
+than the ELM rate, but not fast enough to resolve one cycle alone. At 100 kHz
+you would watch a single ELM directly and need none of this; at 5 Hz you would
+still phase-sort, over far more cycles.
 
 The fix is to sort measurements by where they fall in the cycle and keep only
 the part you want. That needs the time of every ELM, which is what the stored
