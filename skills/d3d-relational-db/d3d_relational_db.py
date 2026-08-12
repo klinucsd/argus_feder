@@ -104,6 +104,122 @@ def shot_summary(shot):
     return rows[0] if rows else None
 
 
+def _fmt(value):
+    """Format one d3drdb value for an answer, without inventing precision."""
+    if value is None:
+        return "not populated"
+    if isinstance(value, str):
+        return value.strip() or "not populated"
+    if isinstance(value, float):
+        if value != value:                       # NaN
+            return "not populated"
+        if value and (abs(value) >= 1e6 or abs(value) < 1e-3):
+            return f"{value:.6g}"
+        return f"{value:g}"
+    return str(value)
+
+
+def report_shot_summary(shot, fields):
+    """Return the ANSWER TEXT for a shot-summary question -- quote it verbatim.
+
+    Reads each named field straight from the SUMMARIES row and formats it. The
+    caller reports this string; it does not restate the numbers in its own
+    words. Values written from memory rather than from the row have been wrong
+    by 2.7x on this exact table (see SKILL.md), and a wrong scalar in a fluent
+    sentence is not detectable by the reader.
+
+    `fields` is the list of column names the question actually asked for.
+    Unknown column names are reported as such rather than silently dropped, so
+    a typo in a field name cannot look like a missing measurement.
+    """
+    row = shot_summary(shot)
+    if row is None:
+        return f"Shot {shot}: no SUMMARIES row in d3drdb."
+    lines = [f"Shot {shot} (values read directly from d3drdb SUMMARIES):"]
+    for f in fields:
+        if f not in row.keys():
+            lines.append(f"  {f}: NOT A COLUMN in SUMMARIES")
+        else:
+            lines.append(f"  {f}: {_fmt(row[f])}")
+    return "\n".join(lines)
+
+
+def explain_signal(tag):
+    r"""Return the ANSWER TEXT for 'what does this tag mean' -- quote it verbatim.
+
+    Resolves the tag through the catalog instead of reading meaning off its
+    name. Tag names are not self-describing: FS02UPDA is a RAW filterscope
+    channel (PMT22:PHOTON_FLUX) where UP is a viewing location and DA is the
+    species, but the name invites reading "UPDA" as "updated". An answer that
+    guessed exactly that has already been given.
+
+    Says so plainly when the catalog has no entry -- an undocumented signal is
+    not the same as a signal whose meaning can be inferred.
+
+    When the tag names a tree (\EFIT01::BT0VAC), rows from OTHER trees are
+    labelled as such. The same name often exists in several trees with the
+    description attached to only one of them: BT0VAC is documented under EFIT
+    and "Unassigned Signal" under EFIT01, so an answer about EFIT01 that quotes
+    the EFIT description presents a sibling row's text as the catalog's word on
+    the signal asked about. Usually the same quantity; still an inference, and
+    the catalog does not say it.
+    """
+    raw = str(tag).strip()
+    want_tree = raw.split("::")[0].lstrip("\\").strip().upper() if "::" in raw else None
+    name = raw.lstrip("\\").split("::")[-1].strip()
+
+    rows = search_signal_catalog(name, limit=10)
+    exact = [r for r in rows
+             if (r["Name"] or "").lstrip("\\").split("::")[-1].upper() == name.upper()]
+    hits = exact or rows
+    if not hits:
+        return (f"{tag}: no entry in the d3drdb signal catalog. The catalog documents "
+                f"only a minority of signals, so this does not mean the signal is absent "
+                f"from MDSplus -- but its meaning is NOT established. Do not infer it "
+                f"from the tag name.")
+
+    def documented(r):
+        d = (r["Description"] or "").strip()
+        return bool(d) and "unassigned" not in d.lower()
+
+    def block(r, indent):
+        pad = " " * indent
+        return [f"{pad}Tree        : {r['Tree']}",
+                f"{pad}Full_Path   : {r['Full_Path']}",
+                f"{pad}Description : {(r['Description'] or '').strip() if documented(r) else 'NOT DOCUMENTED for this tree'}",
+                f"{pad}Units       : {r['Units'] if documented(r) else 'not documented'}"]
+
+    lines = [f"{tag} -- from the d3drdb signal catalog:"]
+    if want_tree:
+        mine = [r for r in hits if (r["Tree"] or "").upper() == want_tree]
+        others = [r for r in hits if (r["Tree"] or "").upper() != want_tree]
+        if mine:
+            lines.append(f"  REQUESTED TREE ({want_tree}):")
+            lines += block(mine[0], 4)
+        else:
+            lines.append(f"  REQUESTED TREE ({want_tree}): no catalog row for this name in this tree.")
+        if others:
+            lines.append("  SAME NAME IN OTHER TREES -- a different signal record, not the one asked about:")
+            for r in others[:3]:
+                lines += block(r, 4)
+                lines.append("")
+        if mine and not documented(mine[0]) and any(documented(r) for r in others):
+            src = next(r for r in others if documented(r))
+            lines.append(f"  The {want_tree} row carries no description. If you offer the "
+                         f"{src['Tree']} description as the likely meaning, say that it comes "
+                         f"from a DIFFERENT tree and is unconfirmed for {want_tree}.")
+    else:
+        for r in hits[:3]:
+            lines += block(r, 2)
+            lines.append("")
+        if len({(r["Tree"] or "") for r in hits}) > 1:
+            lines.append("  This name exists in several trees. Say which tree the answer is "
+                         "about; do not merge their descriptions.")
+    if not exact:
+        lines.append("  (no exact name match -- these are keyword matches, state that)")
+    return "\n".join(l for l in lines if l != "" or True).rstrip()
+
+
 def search_signal_catalog(keyword, limit=50):
     """Search SIGNAL_NAMES/SIGNAL_INFO for a keyword in the signal name or description.
 

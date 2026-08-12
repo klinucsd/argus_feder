@@ -1,6 +1,6 @@
 ---
 name: d3d-relational-db
-description: "Query d3drdb, the DIII-D relational (shot-metadata) database -- a trimmed, plasma-shots-only local copy. Use for: which shots exist in a range, shot type/plasma filtering, per-shot physics summary scalars (elongation, plasma current, pulse length, disruption time), or looking up what a signal name means / which MDSplus tree+path it lives in. This is metadata/catalog data, NOT the raw time-series signal -- for the actual waveform use d3d-shot-fetcher / d3d-filterscopes / toksearch-mds."
+description: "DIII-D signal catalog and shot-metadata database (d3drdb), as a trimmed plasma-shots-only local copy. REQUIRED for any question about what a DIII-D signal, tag or pointname MEANS -- including questions phrased as explanation rather than data, such as 'what is FS02UPDA', 'what does EFIT01::BT0VAC mean in plain English', 'what does this signal measure', 'what are its units'. Those are catalog lookups, not general knowledge: DIII-D tag names are not self-describing and answering from the name has produced wrong meanings, so call explain_signal(tag) and quote what it returns. Also REQUIRED for per-shot scalars (elongation, plasma current, pulse length, neutron yield, peak beta_N, disruption time) -- call report_shot_summary(shot, fields) and quote it -- and for which shots exist in a range, plasma-shot filtering, and which MDSplus tree and path a signal lives in. Catalog and metadata only, NOT the raw time series: for a waveform use d3d-shot-fetcher / d3d-filterscopes / toksearch-mds."
 license: Apache-2.0
 compatibility: Designed for deepagents CLI
 metadata:
@@ -29,7 +29,8 @@ scripts with plain `python script.py`.
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-relational-db"))
-from d3d_relational_db import query_d3drdb, plasma_shots_in_range, shot_summary, search_signal_catalog
+from d3d_relational_db import (query_d3drdb, plasma_shots_in_range, shot_summary,
+                               search_signal_catalog, report_shot_summary, explain_signal)
 ```
 
 ## Convenience functions (prefer these over writing raw SQL)
@@ -39,6 +40,107 @@ plasma_shots_in_range(190000, 195000)   # -> [190000, 190001, ...] list of shot 
 shot_summary(165340)                     # -> dict of SUMMARIES columns for one shot, or None
 search_signal_catalog("kappa")           # -> [{"Name", "Tree", "Full_Path", "Description", "Units"}, ...]
 query_d3drdb(sql, params=())             # -> list[dict], for anything else
+
+report_shot_summary(144921, ["gas", "neutrons"])   # -> ANSWER TEXT to quote verbatim
+explain_signal(r"\FS02UPDA")                        # -> ANSWER TEXT to quote verbatim
+```
+
+## Answer summary questions with `report_shot_summary()`, and quote it
+
+**When the question asks for per-shot scalars, call `report_shot_summary(shot,
+fields)` and quote the string it returns.** It reads each field straight from
+the row and formats it, so there is nothing left to restate:
+
+```
+Shot 144921 (values read directly from d3drdb SUMMARIES):
+  gas: D2
+  neutrons: 3.98594e+15
+  betanmax: 3.1168
+  t_betanmax: 3.905
+```
+
+An unknown field name comes back as `NOT A COLUMN in SUMMARIES` and a missing
+shot as `no SUMMARIES row in d3drdb`, so neither can be mistaken for a
+measurement that happens to be absent.
+
+**Why this is a rule and not a suggestion.** An answer to exactly this question
+ran the right query on the right columns for shot 144921 -- `s.get("neutrons")`,
+`s.get("betanmax")`, `s.get("t_betanmax")` -- and then wrote different numbers
+into its report: `1.094e+16` instead of `3.98594e+15`, `2.317` instead of
+`3.1168`, `3.206 s` instead of `3.905 s`. Wrong by 2.7x, by 34%, and by 0.7 s.
+The one field that came out right was `gas`, the only one that is a string.
+Nothing in the answer looked wrong; three plausible scalars in a fluent
+sentence give a reader nothing to check against.
+
+## Answer "what does this tag mean" with `explain_signal()`, never from the name
+
+**Tag names are not self-describing. Resolve them through the catalog.**
+`explain_signal(tag)` returns the answer text and says plainly when the catalog
+has no entry -- an undocumented signal is not one whose meaning can be guessed.
+
+Verified, and the reason this rule exists:
+
+```
+\FS02UPDA -- from the d3drdb signal catalog:
+  Name        : FS02UPDA
+  Tree        : SPECTROSCOPY
+  Full_Path   : \SPECTROSCOPY::TOP.FILTERSCOPE.PMT22:PHOTON_FLUX
+```
+
+An answer once glossed this as "UPDA indicates an *updated/processed* version".
+It is a **raw** channel -- `PHOTON_FLUX` off PMT22. In this naming scheme `UP`
+is a viewing location and the trailing letters are the species, which the
+catalog shows directly: `FS04C3` and `FS04UPC3` are the same carbon-III
+measurement from two locations, exactly as `FS02DA` and `FS02UPDA` are for
+D-alpha. Read from the name, "UP" disappears into a plausible English word.
+
+**The same name usually exists in several trees, and the description is often
+attached to only one of them.** `explain_signal()` labels the rows, so quote
+the labels as it gives them:
+
+```
+\EFIT01::BT0VAC -- from the d3drdb signal catalog:
+  REQUESTED TREE (EFIT01):
+    Full_Path   : \EFIT01::TOP.RESULTS.AEQDSK:BT0VAC
+    Description : NOT DOCUMENTED for this tree
+  SAME NAME IN OTHER TREES -- a different signal record, not the one asked about:
+    Tree        : EFIT
+    Description : vacuum toroidal field at magnetic axis
+    Units       : T
+  The EFIT01 row carries no description. If you offer the EFIT description as
+  the likely meaning, say that it comes from a DIFFERENT tree and is
+  unconfirmed for EFIT01.
+```
+
+An answer to this exact question stated "vacuum toroidal magnetic field at the
+magnetic axis" for `\EFIT01::BT0VAC` as catalog fact. That text belongs to the
+`EFIT` row; `EFIT01` says "Unassigned Signal". It is very likely the same
+quantity -- and that is an inference, which the reader is entitled to see
+marked as one. `BT0VAC` also exists in `EFIT02` and `EFIT03`, equally
+undocumented.
+
+Note the catalog stores the placeholder string `"Unassigned Signal."` for
+undocumented entries. `explain_signal()` reports those as `NOT DOCUMENTED for
+this tree`; do not quote the placeholder as though it described the signal.
+
+## Trap: do NOT filter on `PLASMA_SHOT`
+
+`SHOTS.PLASMA_SHOT` looks like the plasma filter and is not. It is NULL for
+90,416 of 90,418 rows, and the two populated values are the **string** `'1'`,
+not the integer 1. `WHERE PLASMA_SHOT = 1` therefore returns 2 rows and looks
+like a catastrophic archive, which has already misled one analysis.
+
+There is nothing to filter: **every row in this file is already a plasma
+shot**. Count them with a plain `SELECT COUNT(*) FROM SHOTS WHERE SHOT BETWEEN
+? AND ?`, or use `plasma_shots_in_range(lo, hi)`.
+
+```python
+plasma_shots_in_range(190000, 195000)      # correct -- 3,507 shots
+query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE SHOT BETWEEN 190000 AND 195000")
+# [{'n': 3507}]   correct
+
+# WRONG -- returns 2, because PLASMA_SHOT is unpopulated
+query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE PLASMA_SHOT = 1")
 ```
 
 ## Tables (only these 5 exist in this file)
@@ -47,7 +149,8 @@ query_d3drdb(sql, params=())             # -> list[dict], for anything else
   `BRIEF` (short text description of the shot), `SHOT_TYPE`, `SHOT_OK`
   (quality flag). Also present: `RUN` (run/session date, e.g. `'20160128'`),
   `ENTERED` (timestamp the record was entered), `USERNAME` (who entered it),
-  `CHIEF_OPERATOR`/`CHIEF_OPERATOR_ID`, `QUALITY_COMMENT`, `PLASMA_SHOT`,
+  `CHIEF_OPERATOR`/`CHIEF_OPERATOR_ID`, `QUALITY_COMMENT`, `PLASMA_SHOT`
+  (**a trap -- see below**),
   `TOTAL_UNCOMPRESSED_SIZE`/`TOTAL_COMPRESSED_SIZE` (archive size),
   `INIT_TIME`/`STORE_TIME`/`ANALYSIS_TIME`, `DBKEY`. Several of these
   (`CHIEF_OPERATOR`, `INIT_TIME`, `STORE_TIME`) are frequently NULL in this

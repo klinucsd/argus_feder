@@ -182,6 +182,7 @@ below), not an error.
 | `rec.has_error("x")` | `"x" in rec.errors` | `AttributeError` -- no such method |
 | `sig.shot()` | shot comes from `rec["shot"]` | `AttributeError` |
 | `MdsSignal(expression=..., tree=...)` | `MdsSignal(r"\ipmhd", "efit01")` | wrong kwarg names; the real signature is `MdsSignal(expression, treename, location=None, dims=("times",), ...)` |
+| `MdsSignal(r"\\ipmhd", "efit01")` | `MdsSignal(r"\ipmhd", "efit01")` | `MDSplus.mdsExceptions.TreeINVPATH: %TREE-E-INVPATH, Invalid tree pathname specified` |
 
 ## Sampling rate: a time INTERVAL in ms is not a frequency in Hz
 
@@ -305,7 +306,39 @@ stated in the answer, not only to the part that was explicitly asked for --
 a domain scientist reading the answer can't tell which parts were "the
 question" and which were bonus context, and will trust both equally.
 
-## Two small code-writing gotchas (verified 2026-08-02)
+## Code-writing gotchas (verified 2026-08-02, extended 2026-08-11)
+
+- **Write a signal name with exactly ONE backslash inside a raw string:
+  `r"\ipmhd"`.** A raw string already passes the backslash through untouched,
+  so escaping it again produces a two-backslash name, which MDSplus reads as a
+  fully-qualified `\\TREE::NODE` reference with the tree part missing. Verified
+  on shot 165340, both run through `fdp run` in the same container:
+
+  ```
+  MdsSignal(r"\ipmhd", "efit01")    ->  OK, 311 points
+  MdsSignal(r"\\ipmhd", "efit01")   ->  MDSplus.mdsExceptions.TreeINVPATH:
+                                        %TREE-E-INVPATH, Invalid tree pathname specified
+  ```
+
+  **When a fetch raises `TreeINVPATH`, re-read the signal name in the failing
+  `MdsSignal(...)` call before changing anything else** -- a doubled backslash
+  is the cause, and it is invisible unless the name is read character by
+  character. The environment fails with different errors, so INVPATH rules the
+  environment out: a missing Pelican token, a missing `LD_PRELOAD`, or a wrong
+  `<tree>_path` all give `TreeFOPENR`, and an unset or empty `<tree>_path`
+  gives `TreeNOPATH`. All five cases were checked in one container.
+
+  This has been hit live: an agent copied the correct `r"\ipmhd"` line from
+  this file, doubled the backslash while writing it out, then diagnosed the
+  resulting INVPATH as an in-kernel-vs-`fdp run` problem and re-ran the same
+  broken name under `fdp run`. Reading the name would have ended it in one step.
+
+- **Report the fetch error before changing the code that produced it.** Write
+  the pipeline so a failed fetch surfaces `rec.errors`, and read that message,
+  rather than filtering the record out and inferring a cause from the empty
+  result. `@pipe.where(lambda rec: not rec.errors)` drops the errored record,
+  so the run reports "0 records" and the real MDSplus message is never seen --
+  which is how the INVPATH above got misdiagnosed twice in a row.
 
 - **Use raw strings for backslash-prefixed signal names EVERYWHERE, not just
   inside `MdsSignal(...)`.** A plain (non-raw) docstring or comment like
