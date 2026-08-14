@@ -69,9 +69,10 @@ plasma the ELM actually reaches.
 
 ### Building a training cohort for a published ELM-forecasting study
 
-A research task set by someone else. Teo et al. (2026) train a neural network to
-forecast the first ELM after the L-H transition, and state their own principal
-limitation twice: the dataset is too small to quantify performance, and
+A research task set by someone else.
+[Teo et al. (2026)](https://arxiv.org/abs/2604.06508) train a neural network
+to forecast the first ELM after the L-H transition, and state their own
+principal limitation twice: the dataset is too small to quantify performance, and
 identifying which discharges are relevant for training is a necessary next step.
 They used 26 discharges. In six plain-English questions and no code, ARGUS
 establishes what labels exist and who produced them, characterises the
