@@ -67,6 +67,23 @@ plasma the ELM actually reaches.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_phase_analysis_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_phase_analysis_colab.ipynb)
 
+### Building a training cohort for a published ELM-forecasting study
+
+A research task set by someone else. Teo et al. (2026) train a neural network to
+forecast the first ELM after the L-H transition, and state their own principal
+limitation twice: the dataset is too small to quantify performance, and
+identifying which discharges are relevant for training is a necessary next step.
+They used 26 discharges. In six plain-English questions and no code, ARGUS
+establishes what labels exist and who produced them, characterises the
+distribution of first-ELM times, assembles a candidate cohort of 4,873
+discharges, interrogates an anomaly in its own data, grounds one case in the raw
+D-alpha signal, and states what the cohort cannot support — including that it
+cannot reproduce the original study, because nothing in the data locates the
+L-H transition.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_forecast_cohort_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_forecast_cohort_colab.ipynb)
+
 ### IMAS ↔ DIII-D terminology
 
 Translating between IMAS — the device-neutral standard vocabulary used across
