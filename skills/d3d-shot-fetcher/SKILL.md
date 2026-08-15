@@ -10,6 +10,30 @@ metadata:
 
 # DIII-D Shot Data Fetcher Skill
 
+## First: `PTSERVER` / `getservbyname` errors mean the wrapper was omitted
+
+If a fetch fails with:
+
+```
+getservbyname failed for task 'PTSERVER' ... not in /etc/services
+```
+
+the script was run in-kernel. **This is not a network outage, an expired token,
+or a service that needs restoring.** Re-run the identical script with
+`fdp run python script.py` -- change nothing else. Never report this error to
+the user as an environment failure, and never ask them to restore connectivity.
+
+This applies on EVERY fetch, including re-runs and re-analysis. A follow-up
+request that re-fetches the same signal to redo an analysis differently is still
+a fetch. Verified twice on live sessions: a run fetched correctly under
+`fdp run`, was asked to redo the measurement, ran the new script in-kernel, hit
+this error, and reported the environment as broken while `fdp run python` was
+working in the same pod at the same moment.
+
+Affects all PTDATA signals, which includes every BES channel (`BESFU*`). Local
+SQLite work and MDSplus tree reads are unaffected -- see the execution-rule
+section below for where the boundary sits.
+
 ## First: D-alpha / filterscope / ELM requests go to another skill
 
 If the request mentions D-alpha (Dalpha, D_alpha, Dα), filterscopes, ELM (Edge
@@ -106,6 +130,41 @@ That in-kernel command must be BARE: an absolute script path with no `cd`, no
 kernel -- it runs as a subprocess, where nothing can render, and it exits 0
 looking successful (verified 2026-08-02: `cd <dir> && python plot.py` produced
 no chart, no error, no warning).
+
+### The rule applies to EVERY fetch, including re-runs and re-analysis
+
+`fdp run python` is required each time a script fetches PTDATA -- not only the
+first time in a session. A follow-up request that re-fetches the same signal to
+redo an analysis differently is still a fetch, and still needs the wrapper.
+
+**This has been hit live.** A session fetched BES correctly under `fdp run`
+three times, was then asked to redo the measurement with a different filter, and
+ran the new script in-kernel. It failed with:
+
+```
+ptdata._core.PtDataError: Error opening network connection:
+getservbyname failed for task 'PTSERVER' ... not in /etc/services
+```
+
+**That error means exactly one thing: a PTDATA fetch ran in-kernel.** It is not
+a network outage, not an expired token, and not a service that needs restoring.
+The fix is to re-run the identical script with `fdp run python` -- change
+nothing else. Do not report it to the user as an environment failure, and do not
+ask them to restore connectivity.
+
+**Where the boundary actually sits**, so this is not over-applied:
+
+| work | in-kernel `python` | `fdp run python` |
+|---|---|---|
+| local SQLite (ELM index, d3drdb) | yes -- preferred, no network | unnecessary |
+| MDSplus trees (efit01, spectroscopy, electrons, bes) | works | works |
+| **PTDATA (`PtDataSignal`, incl. all BES `BESFU*`)** | **fails** | **required** |
+| interactive chart rendering | required | cannot render |
+
+So most analysis steps legitimately run in-kernel; it is specifically PTDATA
+that does not. If a re-analysis step needs both an interactive chart and a
+PTDATA fetch, split it: fetch under `fdp run` and save to disk, then render
+in-kernel from the saved file.
 
 ## Start from this script -- it is verified and covers every API you need
 
@@ -510,3 +569,83 @@ startup. Never attempt PTDATA in an in-kernel/interactive-chart script.
 pipeline than `efit01`'s `\ipmhd` (computed equilibrium reconstruction) -- same
 physical quantity, different source, so don't expect identical values between
 the two; report which one you fetched.
+
+## Beam emission spectroscopy (BES) -- 64 channels at 1 MHz
+
+**The `bes` MDSplus tree holds only metadata. The waveforms are in PTDATA**, as
+one pointname per channel: `BESFU01` .. `BESFU64`. Opening the `bes` tree and
+finding fifteen short nodes is not evidence that BES data is missing -- it is
+the expected layout, and the template lives in `\BES::BES_FPN` (`'besfunn'`,
+where `nn` is the zero-padded channel number).
+
+The array is 8x8 in the plasma edge and outboard region, sampled at 1 MHz, so
+it resolves fluctuations to ~500 kHz. `\BES::BES_R` and `\BES::BES_Z` give the
+64 channel positions in cm -- needed to pick which channels sit at the pedestal,
+since that changes between shots.
+
+**Use `fetch_ptdata()` from the `d3d_ptdata` module shipped with this skill.**
+It runs the fetch in a real subprocess, so it works from a notebook cell, from a
+script, from anywhere -- you do not have to think about execution paths:
+
+```python
+import os, sys
+sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-shot-fetcher"))
+import numpy as np
+from MDSplus import Tree
+from d3d_ptdata import fetch_ptdata
+
+
+def bes_geometry(shot):
+    """(R, Z) in cm for the 64 channels, or (None, None) if not stored."""
+    try:
+        tree = Tree("bes", shot)
+        R = np.asarray(tree.getNode(r"\BES::BES_R").getData().data(), float)
+        Z = np.asarray(tree.getNode(r"\BES::BES_Z").getData().data(), float)
+        return R, Z
+    except Exception:
+        return None, None
+
+
+for SHOT in (166692, 169908):
+    R, Z = bes_geometry(SHOT)
+    if R is None:
+        chans = [32, 40, 48]          # outer column, by convention
+    else:
+        # Rank by MAJOR RADIUS FIRST -- the pedestal is at the outermost radius.
+        # Then, among those, take the ones nearest the midplane. Sorting by |Z|
+        # first picks midplane channels at any radius, which lands ~15 cm inside
+        # the array's outer edge and misses the pedestal entirely.
+        chans = [i + 1 for i in np.argsort(-R)[:16] if abs(Z[i]) < 5][:3]
+    sig = fetch_ptdata(SHOT, [f"BESFU{c:02d}" for c in chans])
+    t = sig[f"BESFU{chans[0]:02d}"]["times"]
+    print(f"shot {SHOT}: channels {chans}, {len(t):,} samples, "
+          f"{t[0]:.0f}-{t[-1]:.0f} ms, {1000.0/np.median(np.diff(t))/1e6:.1f} MHz")
+```
+
+Verified output:
+```
+shot 166692: channels [32, 56, 48], 6,291,456 samples, 500-6791 ms, 1.0 MHz
+shot 169908: channels [32, 48, 40], 5,242,880 samples, 200-5443 ms, 1.0 MHz
+```
+
+**Guard the geometry lookup.** Individual metadata nodes are not populated on
+every shot -- on 169908 `\BES::BES_N` raises `TreeNODATA` while `BES_R` and
+`BES_Z` return normally. Read only the nodes actually needed, and fall back to
+a fixed channel list rather than failing: the waveforms are present in PTDATA
+regardless of what the `bes` tree stores.
+
+**Cost, measured.** One channel is 5-6.3 million samples, about 50 MB as
+float64, and takes ~1.1 s to fetch; four channels take 1.8 s (~0.5 s each).
+All 64 channels is roughly 3.2 GB and about a minute. **Quote this before
+fetching the whole array** -- a request for "the BES data" across several shots
+is tens of gigabytes. Fetch the channels the question needs, and cast to
+float32 on read if the array is being kept in memory.
+
+BES comes through PTDATA, so the `fdp run` execution rule above applies: a
+plain in-kernel fetch fails with `getservbyname failed for task 'PTSERVER'`.
+
+**Choosing channels.** The pedestal sits at large major radius; `R` spans
+roughly 210-230 cm depending on the shot, and the outermost column is the edge.
+Report which channels were used and their `(R, Z)`, because "the BES signal" is
+not one signal and a reader cannot otherwise tell where in the plasma the
+result came from.
