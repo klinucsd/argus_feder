@@ -1,6 +1,6 @@
 ---
 name: d3d-shot-fetcher
-description: Fetch plasma data for DIII-D shot numbers — elongation (kappa), poloidal flux (psirz), plasma current (ipmhd), stored energy (wmhd), beta, and other efit01 signals
+description: Fetch plasma data for DIII-D shot numbers — elongation (kappa), poloidal flux (psirz), plasma current (ipmhd), stored energy (wmhd), beta, and other efit01 signals; also PTDATA raw digitizer signals and beam emission spectroscopy (BES) waveforms
 license: Apache-2.0
 compatibility: Designed for deepagents CLI with fdp-d3d
 metadata:

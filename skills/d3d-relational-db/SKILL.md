@@ -10,6 +10,24 @@ metadata:
 
 # d3d-relational-db -- DIII-D Relational Database (d3drdb)
 
+## First: a catalog miss is NOT evidence a signal is unavailable
+
+The catalog documents only a minority of DIII-D signals. `search_signal_catalog()`
+returning zero rows means **this database has no record of that name** -- it does
+not mean the signal is absent from the archive, and it never licenses the answer
+"I cannot locate this signal".
+
+**Beam emission spectroscopy (BES) is the worked example.** It has no catalog
+entry at all, yet all 64 channels are fetchable. Asked where BES data lives, an
+answer built only on a catalog lookup reported zero matches and concluded BES was
+not locatable in this environment; the location was documented in
+`d3d-shot-fetcher` the whole time.
+
+So: for **where a signal's waveforms actually live**, or to fetch any signal
+whose name this catalog does not know -- **BES especially** -- use
+`d3d-shot-fetcher`. Use this skill for what a catalogued name MEANS, its units,
+and per-shot scalars.
+
 ## What this is, and what it is NOT
 
 d3drdb is DIII-D's shot-metadata database (shot list, physics summary scalars,

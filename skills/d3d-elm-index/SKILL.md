@@ -62,7 +62,7 @@ from d3d_elm_index import (
 )
 ```
 
-## The eleven rules, in one place
+## The twelve rules, in one place
 
 Read the rule that applies before answering. Each is spelled out below.
 
@@ -94,6 +94,11 @@ Read the rule that applies before answering. Each is spelled out below.
 10. **Never compare an ELM-event run against a regime-window run** -- same
     granularity, different kind of statement. And clip to the comparable
     window: ground-truth runs cover only the slice a person labelled.
+11. **Name the label set the conclusion rests on, and what else was
+    available** -- when several sets cover the shot, say which was used, name
+    the alternatives from `compare_on_shot(shot)`, and say the result is
+    conditional on that choice unless it has been re-run against them. Same
+    for the baseline window, the screening, and the averaging method.
 
 Rules 9 and 10 are spelled out first because they concern the most recently
 added data and are the easiest to get silently wrong; rules 1-8 follow.
@@ -422,6 +427,55 @@ Each row of `label_sets()['runs']` carries: `run_id`, `method`, `granularity`,
 #  'human_elm_events': (0, 6), 'omfit_elm': (4, 4)}
 # omfit_elm: 4 crashed, 4 ran and found nothing -- NOT '8 failures'.
 ```
+
+## Rule 11: name the label set the conclusion rests on, and what else was available
+
+**When more than one label set covers the shot, the answer must say which one
+the result was computed from, name the alternatives, and state that a different
+choice may change the conclusion unless that has actually been checked.**
+
+The choice is usually invisible in the result. `compare_on_shot(shot)` lists
+every set covering a shot, tagged by source:
+
+```python
+compare_on_shot(169908)["event_level"]
+# run 1  GA mode_classifier detector   interval   1 event    detector
+# run 2  GA mode_classifier detector   burst     21 events   detector
+# run 4  Expert ELM events             burst     22 events   ground truth
+# run 5  OMFIT ELM detector            burst     21 events   detector
+```
+
+Four sets, three of them event-level, on one shot. An analysis keyed to any of
+them is defensible; an analysis that does not say which it used is not
+checkable.
+
+**Why this matters more than it looks.** The sets do not agree on timing. On
+this shot the detector's event starts run roughly a millisecond earlier than
+the expert's. For a question about *how many ELMs* that is irrelevant. For a
+question about *how long before an ELM something happens*, a systematic
+millisecond is the same size as the effect being measured, and the conclusion
+can follow the label set rather than the physics.
+
+Verified: the same seven-question analysis, run twice with identical wording,
+selected different label sets and reached different conclusions about a
+millisecond-scale lead time. Neither run stated that another set was available.
+A reader of either answer had no way to know the choice existed.
+
+**What to write.** One sentence with the result, of the form:
+
+> Computed from *(name of set)*. Shot 169908 also has *(the others)*; this
+> result has not been re-run against them, so treat the lead time as
+> conditional on that choice.
+
+If it *has* been re-run against another set, say what changed. "The result is
+the same under both" is a much stronger statement than a number alone, and it
+costs one extra run.
+
+**This applies to every free choice the analysis made**, not only label sets:
+the baseline window, the event screening, the averaging method. State them with
+the result. A conclusion whose assumptions are not visible cannot be checked by
+the person reading it, and the person reading it is usually the only one who
+knows whether the assumption was reasonable.
 
 ## Rule 1: absence is not evidence of absence
 
