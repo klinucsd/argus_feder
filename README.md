@@ -85,6 +85,45 @@ L-H transition.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_forecast_cohort_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_forecast_cohort_colab.ipynb)
 
+### Testing a published claim: do turbulence precursors precede an ELM?
+
+A complete study rather than a query. Joung et al. (*Nucl. Fusion* **64**,
+066038, 2024) train a network to predict ELM onset from beam emission
+spectroscopy and report that pedestal turbulence in the 15–150 kHz band rises
+before the crash. The claim underneath the network is a measurement, so it can
+be tested directly — here against ELM labels from a detector with recorded
+provenance, on discharges nobody curated for the purpose.
+
+Reaching BES at all is most of the difficulty: the `bes` MDSplus tree holds no
+waveforms, the 64 channels live in a different data source under names the tree
+encodes as a template, and which of them sit at the pedestal changes between
+shots. In seven plain-English questions and no code, ARGUS locates the data,
+picks the edge channels, filters to the band, averages over every labelled ELM,
+quantifies the result, rebuilds the analysis with a strictly causal estimator to
+show the method did not manufacture its own answer, and states what the result
+cannot support.
+
+The last two questions are the ones worth reading. Asked whether its power
+estimate might be using data from after the point it reports, the agent measured
+the original estimator's look-ahead by impulse injection — 0.30 ms on one
+deployment and 0.32 ms on the other, arrived at independently — and redid the
+analysis causally. Over the two runs it also retracted a figure it had already
+reported, replaced a statistic after showing a few loud events dominated it, and
+walked one of its own claims back to p = 0.09.
+
+The two deployments were asked byte-identical questions and did not return the
+same study. Both find no systematic precursor in the ensemble average. One then
+bounds what its design could have detected at all; the other runs a per-ELM
+census and finds an intermittent rise on roughly a tenth of ELMs, significant
+against a false-alarm null. Neither is a correction of the other, and the
+divergence is legible only because the questions were identical.
+
+The JupyterHub notebook needs `kaiucsd/argus-feder:0.1.5-rc5` or later — it uses
+a PTDATA helper that is not in `0.1.4`.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_bes_elm_precursor_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb)
+
 ### IMAS ↔ DIII-D terminology
 
 Translating between IMAS — the device-neutral standard vocabulary used across
