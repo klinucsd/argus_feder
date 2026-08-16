@@ -118,9 +118,6 @@ census and finds an intermittent rise on roughly a tenth of ELMs, significant
 against a false-alarm null. Neither is a correction of the other, and the
 divergence is legible only because the questions were identical.
 
-The JupyterHub notebook needs `kaiucsd/argus-feder:0.1.5-rc5` or later — it uses
-a PTDATA helper that is not in `0.1.4`.
-
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_bes_elm_precursor_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb)
 
@@ -144,7 +141,7 @@ incomplete, and mistyped input.
 The JupyterHub notebooks need no install step — use the prebuilt image:
 
 ```
-kaiucsd/argus-feder:0.1.4
+kaiucsd/argus-feder:0.1.5
 ```
 
 Supply two credentials at runtime (neither is baked into the image):
