@@ -4,11 +4,11 @@ Run AFTER the environment-preparation cell (condacolab) has already restarted
 your session once. This installs, silently unless something goes wrong:
   1. DIII-D data access (TokSearch + Pelican)
   2. Your Pelican token, from the Colab Secret named FDP_TOKEN
-  3. The ARGUS agent (%%ask)
-  4. The DIII-D skills (fetch signals, look up shot metadata, query the
+  3. FEDER's additions to the `%%ask --review` rubric
+  4. The ARGUS agent (%%ask)
+  5. The DIII-D skills (fetch signals, look up shot metadata, query the
      stored ELM label index, phase-filter a diagnostic against ELM timing,
      query the disruption index)
-  5. FEDER's additions to the `%%ask --review` rubric
 
 If anything fails, this prints a clear, specific message naming exactly
 what's wrong -- no silent failures.
@@ -93,7 +93,36 @@ Path("/root/.fdp/token").write_text(token)
 _step("Pelican token loaded")
 
 # ---------------------------------------------------------------------------
-# Step 3: ARGUS agent
+# Step 3: Answer-review rubric additions
+# ---------------------------------------------------------------------------
+# `%%ask --review` grades an answer against a rubric before it reaches you.
+# ARGUS ships three base criteria; these are FEDER's additions, and the path
+# below is fixed by ARGUS -- there is no environment variable and no per-session
+# override, deliberately, so that "passed review" means the same thing for
+# everyone running the same notebook.
+#
+# Fetched from this repo rather than written inline so Colab and the
+# argus-feder image stay in step: one definition, two platforms.
+#
+# MUST run BEFORE the agent install below. sage_magic.py reads this file
+# ONCE, at module level, when it is exec'd -- so a rules file written
+# afterwards is invisible until the kernel restarts. Writing it in a later
+# step silently gave 3 criteria instead of 5 on a first run.
+try:
+    rules = urllib.request.urlopen(f"{REPO_RAW}/review_rules.md").read()
+    rules_path = Path.home() / ".deepagents" / "review_rules.md"
+    rules_path.parent.mkdir(parents=True, exist_ok=True)
+    rules_path.write_bytes(rules)
+    n_rules = sum(1 for line in rules.decode("utf-8").splitlines()
+                  if line.startswith("- "))
+    _step(f"Review rubric extended (+{n_rules} criteria; use %%ask --review)")
+except Exception as _e:
+    # Non-fatal: without this file `%%ask --review` still works, with the
+    # three base criteria only.
+    print(f"    note: review rubric additions unavailable ({_e}); "
+          f"--review will use the 3 base criteria")
+# ---------------------------------------------------------------------------
+# Step 4: ARGUS agent
 # ---------------------------------------------------------------------------
 _step("Installing the ARGUS agent (~1 min the first time)")
 exec(
@@ -104,7 +133,7 @@ exec(
 )
 
 # ---------------------------------------------------------------------------
-# Step 4: DIII-D skills
+# Step 5: DIII-D skills
 # ---------------------------------------------------------------------------
 skills_dir = Path.home() / ".deepagents" / "agent" / "skills"
 for skill_name, files in {
@@ -124,29 +153,5 @@ for skill_name, files in {
         (dest / fname).write_bytes(content)
 _step("DIII-D skills installed")
 
-# ---------------------------------------------------------------------------
-# Step 5: Answer-review rubric additions
-# ---------------------------------------------------------------------------
-# `%%ask --review` grades an answer against a rubric before it reaches you.
-# ARGUS ships three base criteria; these are FEDER's additions, and the path
-# below is fixed by ARGUS -- there is no environment variable and no per-session
-# override, deliberately, so that "passed review" means the same thing for
-# everyone running the same notebook.
-#
-# Fetched from this repo rather than written inline so Colab and the
-# argus-feder image stay in step: one definition, two platforms.
-try:
-    rules = urllib.request.urlopen(f"{REPO_RAW}/review_rules.md").read()
-    rules_path = Path.home() / ".deepagents" / "review_rules.md"
-    rules_path.parent.mkdir(parents=True, exist_ok=True)
-    rules_path.write_bytes(rules)
-    n_rules = sum(1 for line in rules.decode("utf-8").splitlines()
-                  if line.startswith("- "))
-    _step(f"Review rubric extended (+{n_rules} criteria; use %%ask --review)")
-except Exception as _e:
-    # Non-fatal: without this file `%%ask --review` still works, with the
-    # three base criteria only.
-    print(f"    note: review rubric additions unavailable ({_e}); "
-          f"--review will use the 3 base criteria")
 
 print("\nARGUS-FEDER is ready. Ask a question in plain English with a %%ask cell.")
