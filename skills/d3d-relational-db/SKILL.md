@@ -273,9 +273,15 @@ d3drdb's dedicated disruption label tables (`DISRUPTIONS`, `disruption_warning`)
 are legacy and are deliberately excluded from this file (per GA, do not use).
 Do not answer a disruption question from `SUMMARIES.t_disrupt`. Authoritative
 disruption labels come from a separate labels store (populated by running
-`disruption-py` / GA's disruption packages) -- not yet available as of this
-skill's writing. If asked about disruptions and no labels-skill exists yet,
-say so rather than inferring an answer from this field.
+`disruption-py` / GA's disruption packages).
+
+**That store now exists: use the `d3d-disruption` skill** for which shots
+disrupted, when they disrupted, the pre-disruption plasma state, and the
+meaning and units of any disruption-warning parameter. It carries a curated
+label (`time_until_disrupt`, from d3drdb's `disruptions` table) and states its
+own coverage, which this file cannot. If that skill is unavailable, or the shot
+you need is not in its index, say so rather than inferring an answer from
+`SUMMARIES.t_disrupt`.
 
 ## Data scope -- read this before answering coverage questions
 

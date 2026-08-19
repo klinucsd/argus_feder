@@ -1,0 +1,2 @@
+- Whenever the answer reports a number of items used after any filtering, screening or selection step, it must also state the number considered before that step. Reporting only the surviving count fails this criterion.
+- A screening or selection criterion must not be measured on the same quantity over a time interval that overlaps the interval the answer reports as its result. If the screening interval does overlap the reported interval, the answer must say so and state that the result is constrained by the selection.
