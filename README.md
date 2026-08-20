@@ -106,6 +106,56 @@ intermittent rise on about a tenth of ELMs against a false-alarm null.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_bes_elm_precursor_jupyterhub.ipynb)
 [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb)
 
+### Getting started with DIII-D disruption data
+
+A disruption is a sudden, uncontrolled collapse of the plasma current —
+tolerable on a research device, damaging on a power plant, and predicting one
+early enough to act is an open problem. This notebook introduces a stored index
+of twenty DIII-D shots (ten that disrupted, ten that did not) run through
+[disruption-py](https://github.com/MIT-PSFC/disruption-py), the MIT-PSFC
+disruption-warning code, with every signal fetched over the Fusion Data
+Platform. Eight plain-English questions cover what the data contains, what each
+of the 63 parameters means and in what units, what a disruption looks like in
+the traces, and how disrupted and non-disrupted shots differ.
+
+The last two questions are about limits rather than results. The source files
+carry **no units and no descriptions on any variable**, so the meaning of a
+column lives in the index rather than the data; and three parameters return
+plausible but wrong values, which the skill blocks rather than warns about. A
+question asking what fraction of DIII-D shots disrupt is answered by declining:
+twenty shots balanced ten and ten is a constructed slice, not a sample.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_basics_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_basics_colab.ipynb)
+
+### Answering GA's disruption competency questions
+
+General Atomics' competency-question set splits into an ELM half and a
+disruption half; this works through the disruption half (Q14–Q27) against the
+same index. Some questions are answerable now — which pipeline produced a label
+and at what commit, which quantities are disruption precursors and in what
+units, whether the two disruption indicators agree. Some are answerable for one
+pipeline only, because GA's questions assume three and we have run one. And two
+are answered correctly by refusing: a campaign disruption rate, which this slice
+cannot support, and a question about discharge phase, where the column that
+should answer it is constant for every row because of an upstream unit bug.
+
+These notebooks use `%%ask --review`: before an answer reaches the reader, a
+grader sub-agent checks it against a stated rubric and sends it back for
+revision if it fails. The verdict panel under each answer shows what was
+checked. In the published runs it caught and corrected several errors, and in
+one case reported that a correction had **not** succeeded rather than passing
+the answer — worth reading as an example of the mechanism's limits as well as
+its value.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_competency_jupyterhub.ipynb)
+[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_competency_colab.ipynb)
+
+Both disruption notebooks need `disruption.sqlite` (~2 MB), which is not in this
+repo. The review rubric was extended between these runs, so the *basics*
+notebooks show three criteria in their verdict panels and the *competency*
+notebooks six.
+
 ### IMAS ↔ DIII-D terminology
 
 Translating between IMAS — the device-neutral standard vocabulary used across
