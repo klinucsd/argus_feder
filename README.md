@@ -142,7 +142,9 @@ intermittent rise on about a tenth of ELMs against a false-alarm null.
 
 ## Disruption studies
 
-Working from a stored disruption index, from an introduction through competency questions to a research pass.
+Working from a stored disruption index, from an introduction through competency
+questions to a research pass. The index files these notebooks read are provided
+separately rather than held in this repo.
 
 ### Getting started with DIII-D disruption data
 
@@ -178,21 +180,8 @@ are answered correctly by refusing: a campaign disruption rate, which this slice
 cannot support, and a question about discharge phase, where the column that
 should answer it is constant for every row because of an upstream unit bug.
 
-These notebooks use `%%ask --review`: before an answer reaches the reader, a
-grader sub-agent checks it against a stated rubric and sends it back for
-revision if it fails. The verdict panel under each answer shows what was
-checked. In the published runs it caught and corrected several errors, and in
-one case reported that a correction had **not** succeeded rather than passing
-the answer — worth reading as an example of the mechanism's limits as well as
-its value.
-
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_competency_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_competency_colab.ipynb) -->
-
-Both disruption notebooks need `disruption.sqlite` (~2 MB), which is not in this
-repo. The review rubric was extended between these runs, so the *basics*
-notebooks show three criteria in their verdict panels and the *competency*
-notebooks six.
 
 ### Disruption precursors: what a 20-shot slice can and cannot show
 
