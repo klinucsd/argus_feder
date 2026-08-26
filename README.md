@@ -1,17 +1,17 @@
 # ARGUS-FEDER
 
-Ask questions about DIII-D fusion data in plain English — either on Google
-Colab, needing nothing but a browser and an LLM API key, or on JupyterHub
-using the prebuilt image.
+Ask questions about DIII-D fusion data in plain English, on JupyterHub using
+the prebuilt image.
 
 ## Quick start
 
-Pick a notebook from [Examples](#examples) below and open it in Colab, then
-run the cells in order. You'll need:
+Pick a notebook from [Examples](#examples) below and open it on JupyterHub
+with the `kaiucsd/argus-feder` image, then run the cells in order. You'll
+need:
 - An API key for any supported LLM provider (NRP, OpenAI, Anthropic, ...)
 - A DIII-D Pelican access token
 
-Both are added as Colab Secrets — instructions are in the notebook.
+Instructions for supplying both are in the notebook.
 
 ## Examples
 
