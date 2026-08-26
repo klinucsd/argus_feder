@@ -20,6 +20,11 @@ assumes ARGUS, TokSearch and the DIII-D skills are already installed, as they
 are in the `kaiucsd/argus-feder` image. The **Colab** variant is the same
 notebook plus an install bootstrap, so a recipient can just hit *Run all*.
 
+> **Colab is temporarily unavailable.** Google Colab moved its runtime to Python 3.13, and
+> the `ga-fdp` conda channel has no Python 3.13 build of TokSearch yet, so the install step
+> fails. The Colab links are commented out until a build is published. The **JupyterHub**
+> notebooks below are unaffected and run normally.
+
 Both variants ask byte-for-byte identical `%%ask` questions, so the two
 environments can be compared directly. Both are saved with their real outputs
 — you can read what ARGUS answered without running anything.
@@ -33,7 +38,7 @@ symbol name given, querying the shot-metadata database, fetching from PTDATA
 paths and IMAS names.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_pelican_database_ptdata_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb) -->
 
 ### FEDER ELM competency questions
 
@@ -50,7 +55,7 @@ sample cannot support. A confident number in either case would be a failure, not
 a success.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_index_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_index_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_index_colab.ipynb) -->
 
 ### Sorting measurements by where they fall in the ELM cycle
 
@@ -65,7 +70,7 @@ times against a domain expert's before trusting them, and reports where in the
 plasma the ELM actually reaches.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_phase_analysis_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_phase_analysis_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_phase_analysis_colab.ipynb) -->
 
 ### Building a training cohort for a published ELM-forecasting study
 
@@ -83,7 +88,7 @@ cannot reproduce the original study, because nothing in the data locates the
 L-H transition.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_forecast_cohort_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_forecast_cohort_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_forecast_cohort_colab.ipynb) -->
 
 ### Testing a published claim: do turbulence precursors precede an ELM?
 
@@ -104,7 +109,7 @@ bounds what its design could have detected at all, the other finds an
 intermittent rise on about a tenth of ELMs against a false-alarm null.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_bes_elm_precursor_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb) -->
 
 ### Getting started with DIII-D disruption data
 
@@ -126,7 +131,7 @@ question asking what fraction of DIII-D shots disrupt is answered by declining:
 twenty shots balanced ten and ten is a constructed slice, not a sample.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_basics_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_basics_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_basics_colab.ipynb) -->
 
 ### Answering GA's disruption competency questions
 
@@ -149,7 +154,7 @@ the answer — worth reading as an example of the mechanism's limits as well as
 its value.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_competency_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_competency_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_competency_colab.ipynb) -->
 
 Both disruption notebooks need `disruption.sqlite` (~2 MB), which is not in this
 repo. The review rubric was extended between these runs, so the *basics*
@@ -169,7 +174,7 @@ availability that changes over the machine's history, fields whose provenance is
 incomplete, and mistyped input.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_imas_d3d_jupyterhub.ipynb)
-[![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_imas_d3d_colab.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_imas_d3d_colab.ipynb) -->
 
 ## Running on JupyterHub
 
