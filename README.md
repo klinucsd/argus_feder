@@ -29,7 +29,11 @@ Both variants ask byte-for-byte identical `%%ask` questions, so the two
 environments can be compared directly. Both are saved with their real outputs
 — you can read what ARGUS answered without running anything.
 
-### Pelican data access, metadata, and PTDATA
+### Data access and terminology
+
+Getting at DIII-D data, and mapping between naming conventions.
+
+#### Pelican data access, metadata, and PTDATA
 
 ARGUS answering plain-English questions about DIII-D through four different
 access paths: resolving a physics concept to the right MDSplus signal with no
@@ -40,7 +44,26 @@ paths and IMAS names.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_pelican_database_ptdata_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_pelican_database_ptdata_colab.ipynb) -->
 
-### FEDER ELM competency questions
+#### IMAS ↔ DIII-D terminology
+
+Translating between IMAS — the device-neutral standard vocabulary used across
+fusion machines and by ITER — and DIII-D's own historical signal names, in both
+directions. The mapping is extracted from GA's
+[`imas_composer`](https://github.com/GA-FDP/imas_composer) (Apache-2.0) and every
+entry was checked by actually fetching it across shots spanning more than two
+decades of machine operation. The notebook also exercises what a plain name-pair
+table gets wrong: sign conventions that differ between the two vocabularies,
+availability that changes over the machine's history, fields whose provenance is
+incomplete, and mistyped input.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_imas_d3d_jupyterhub.ipynb)
+<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_imas_d3d_colab.ipynb) -->
+
+### ELM studies
+
+Working from a stored index of ELM labels, from competency questions to reproducing a published result.
+
+#### FEDER ELM competency questions
 
 FEDER's ELM competency questions answered in plain English, from a stored index
 of ELM labels: what each detector defines as an ELM and at which parameters
@@ -57,7 +80,7 @@ a success.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_index_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_index_colab.ipynb) -->
 
-### Sorting measurements by where they fall in the ELM cycle
+#### Sorting measurements by where they fall in the ELM cycle
 
 An analysis rather than a question: ARGUS uses stored ELM event times to sort
 Thomson scattering measurements by where they fall in the ELM cycle, then shows
@@ -72,7 +95,7 @@ plasma the ELM actually reaches.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_phase_analysis_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_phase_analysis_colab.ipynb) -->
 
-### Building a training cohort for a published ELM-forecasting study
+#### Building a training cohort for a published ELM-forecasting study
 
 A research task set by someone else.
 [Teo et al. (2026)](https://arxiv.org/abs/2604.06508) train a neural network
@@ -90,7 +113,7 @@ L-H transition.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_elm_forecast_cohort_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_elm_forecast_cohort_colab.ipynb) -->
 
-### Testing a published claim: do turbulence precursors precede an ELM?
+#### Testing a published claim: do turbulence precursors precede an ELM?
 
 A complete study rather than a query. Joung et al. (*Nucl. Fusion* **64**,
 066038, 2024) report that pedestal turbulence in the 15–150 kHz band rises
@@ -111,7 +134,11 @@ intermittent rise on about a tenth of ELMs against a false-alarm null.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_bes_elm_precursor_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_bes_elm_precursor_colab.ipynb) -->
 
-### Getting started with DIII-D disruption data
+### Disruption studies
+
+Working from a stored disruption index, from an introduction through competency questions to a research pass.
+
+#### Getting started with DIII-D disruption data
 
 A disruption is a sudden, uncontrolled collapse of the plasma current —
 tolerable on a research device, damaging on a power plant, and predicting one
@@ -133,7 +160,7 @@ twenty shots balanced ten and ten is a constructed slice, not a sample.
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_basics_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_basics_colab.ipynb) -->
 
-### Answering GA's disruption competency questions
+#### Answering GA's disruption competency questions
 
 General Atomics' competency-question set splits into an ELM half and a
 disruption half; this works through the disruption half (Q14–Q27) against the
@@ -161,20 +188,22 @@ repo. The review rubric was extended between these runs, so the *basics*
 notebooks show three criteria in their verdict panels and the *competency*
 notebooks six.
 
-### IMAS ↔ DIII-D terminology
+#### Disruption precursors: what a 20-shot slice can and cannot show
 
-Translating between IMAS — the device-neutral standard vocabulary used across
-fusion machines and by ITER — and DIII-D's own historical signal names, in both
-directions. The mapping is extracted from GA's
-[`imas_composer`](https://github.com/GA-FDP/imas_composer) (Apache-2.0) and every
-entry was checked by actually fetching it across shots spanning more than two
-decades of machine operation. The notebook also exercises what a plain name-pair
-table gets wrong: sign conventions that differ between the two vocabularies,
-availability that changes over the machine's history, fields whose provenance is
-incomplete, and mistyped input.
+A research pass over the same disruption index, at the level of questions that
+decide whether a prediction study is worth building on this data: when precursors
+become visible before the current quench, which signals actually discriminate
+disrupted from non-disrupted shots, whether the locked mode is a multi-second
+warning or a final-100 ms event, and what an alarm threshold would cost in false
+alarms.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_imas_d3d_jupyterhub.ipynb)
-<!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_imas_d3d_colab.ipynb) -->
+Several answers are negative, and the notebook reports them as such: no parameter
+separates the two classes at p < 0.05 with ten shots per class, and the largest
+AUCs belong to parameters that are statistically pure noise. It also separates the
+apparent discriminators that are real physics from those that are artifacts of how
+the disruption label is defined.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_research_jupyterhub.ipynb)
 
 ## Running on JupyterHub
 
