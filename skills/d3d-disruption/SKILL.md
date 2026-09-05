@@ -2,7 +2,7 @@
 name: d3d-disruption
 description: "Query the stored DIII-D disruption index built from disruption-py output: which shots disrupted and when, the 63 physics parameters sampled through each shot as a time series (plasma current, q95, betas, radiated power, n=1 mode amplitude, stored energy), and what each parameter MEANS and its units. Use for questions about disruptions, disruption timing, disruption precursors, pre-disruption plasma state, or the meaning and units of a disruption-warning parameter. This is DERIVED time-series data carrying its own annotation layer, not a raw diagnostic waveform and not the shot catalog."
 license: Apache-2.0
-compatibility: standard library only (sqlite3); runs in the image, on Colab, or locally
+compatibility: standard library only; runs in the image, on Colab, or locally
 metadata:
   version: "1.0"
 ---
@@ -45,18 +45,10 @@ alongside the number.
 
 ## Setup
 
-The database is not shipped in the image. `locate_disruption_db()` searches
-`$DISRUPTION_DB_PATH`, then:
-
-```
-~/work/_User-Persistent-Storage_CephBlock_/feder/   (NRP persistent, survives pod restarts)
-~/feder_data/
-~/
-/content/                                          (Colab upload target)
-```
-
-for `disruption.sqlite` or `disruption_index.sqlite`. If it is missing the
-error names every path searched.
+The index is served over HTTP by the FEDER lakehouse. There is nothing to
+download, nothing to place in a folder, and no copy to keep in step -- just
+import and query. It does need outbound network; if the service is unreachable
+the helper says so in those terms.
 
 ```python
 import sys, os

@@ -12,7 +12,7 @@ metadata:
 
 ## What this is
 
-A local SQLite index of ELM labels produced by running detection code over
+A served index of ELM labels produced by running detection code over
 DIII-D shots, plus a record of what filterscope data each shot actually had.
 
 Three kinds of stored fact, and anything derivable from them is in scope:
@@ -40,9 +40,13 @@ and use `query_elm_index(sql)` with `schema()` for anything they do not cover.
 
 ## No fdp wrapper needed
 
-Local SQLite -- no network, no Pelican, no `fdp`. Run scripts with plain
-`python script.py`. The command must be BARE `python script.py`, with no
-`cd ... &&`, no pipes and no redirection, so it runs in-kernel.
+Served over HTTP by the FEDER lakehouse -- no Pelican, no `fdp`, and nothing to
+download. Run scripts with plain `python script.py`. The command must be BARE
+`python script.py`, with no `cd ... &&`, no pipes and no redirection, so it runs
+in-kernel.
+
+It does need outbound network. If the service is unreachable the helper says so
+in those terms; there is no local copy to fall back to.
 
 ## Importing
 
@@ -158,8 +162,8 @@ another opinion. `label_sets()` says which is which:
 
 ```python
 X.label_sets()["runs"]
-# run 1  slope_outlier     interval  elm_events      10840 shots  detector      [default]
-# run 2  slope_outlier     burst     elm_events      10840 shots  detector      [default]
+# run 1  slope_outlier     interval  elm_events      10829 shots  detector      [default]
+# run 2  slope_outlier     burst     elm_events      10829 shots  detector      [default]
 # run 3  human_regime      interval  regime_windows    397 shots  GROUND TRUTH
 # run 4  human_elm_events  burst     elm_events         23 shots  GROUND TRUTH
 # run 5  omfit_elm         burst     elm_events         23 shots  detector
@@ -554,7 +558,7 @@ Real output (the index grows, so read the live values rather than these):
 
 ```python
 info = elm_index_info()
-# shots_indexed: 10917
+# shots_indexed: 10926
 # shot_range: (55102, 207788)
 # status_counts: {'labeled': 9629, 'no_data': 856, 'error': 317, 'none_found': 127}
 # labels: {'run 1 (interval)': 26234, 'run 2 (burst)': 1318684,
@@ -562,7 +566,7 @@ info = elm_index_info()
 # label_classes: ['BBQH', 'ELM', 'ELMy H', 'QH', 'WPQH',
 #                  'type1', 'type2', 'type3', 'type4', 'type5']   # pooled across runs
 # channels_tracked: ['fs03da', 'fs04', 'fs04da', 'fs05da']
-# low_snr_labeled_shots: 658
+# low_snr_labeled_shots: 653
 ```
 
 ## Rule 4: report a detector's PARAMETERS, never guess its ALGORITHM
@@ -713,7 +717,7 @@ the preferred channel also drifts with shot era.
 
 `signal_snr` is in **dB and can be negative**. The detector picks the *best
 available* channel, not a *good* one, and labels the shot regardless. In the
-current index **20 labelled shots have negative SNR** -- noise exceeding
+current index **653 labelled shots have negative SNR** -- noise exceeding
 signal (`elm_index_info()['low_snr_labeled_shots']`):
 
 ```python

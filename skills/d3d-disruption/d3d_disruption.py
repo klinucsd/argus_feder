@@ -24,15 +24,13 @@ constraint lives here, where it cannot be skipped: fetch_samples() raises on
 an unusable column instead of returning it.
 """
 import os
-import sqlite3
+import sys
 
-_FOLDERS = [
-    "~/work/_User-Persistent-Storage_CephBlock_/feder",
-    "~/feder_data",
-    "~",
-    "/content",
-]
-_FILENAMES = ["disruption.sqlite", "disruption_index.sqlite"]
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from d3d_lakehouse import LakehouseError  # noqa: E402,F401
+from d3d_lakehouse import endpoint as _endpoint, query as _query_api  # noqa: E402
 
 
 class ShotNotInIndex(LookupError):
@@ -63,52 +61,24 @@ class PopulationClaimUnsupported(ValueError):
 
 
 def locate_disruption_db():
-    """Return the path to the disruption sqlite file, or None if not found."""
-    candidates = []
-    env_path = os.environ.get("DISRUPTION_DB_PATH")
-    if env_path:
-        candidates.append(env_path)
-    for folder in _FOLDERS:
-        for fname in _FILENAMES:
-            candidates.append(os.path.expanduser(f"{folder}/{fname}"))
-    for p in candidates:
-        if p and os.path.exists(p):
-            return p
-    return None
-
-
-def _connect():
-    path = locate_disruption_db()
-    if not path:
-        searched = ", ".join(
-            os.path.expanduser(f"{folder}/{{{'|'.join(_FILENAMES)}}}")
-            for folder in _FOLDERS
-        )
-        raise FileNotFoundError(
-            f"Disruption index not found. Searched $DISRUPTION_DB_PATH, then "
-            f"{searched}.\nFix: place your copy (either name, "
-            f"{' or '.join(_FILENAMES)}) in any of those folders -- on Colab, "
-            f"upload it via the file browser into /content."
-        )
-    # mode=ro so a shared copy cannot be modified by an analysis run; the file
-    # is finalized to journal_mode=DELETE at build time so this works without
-    # -wal/-shm sidecars present.
-    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
-    return con
+    """Retired. The index is served by the lakehouse; there is no local file."""
+    raise NotImplementedError(
+        "The disruption index is no longer a local file -- it is served by the "
+        f"FEDER lakehouse at {_endpoint()}. Nothing needs downloading or placing "
+        "in a folder. Set $FEDER_API_URL to point at a different deployment.")
 
 
 def _query(sql, params=()):
     """The backend seam. Returns a list of dicts.
 
-    Replace the body of this function to move to a served backend; leave every
-    caller untouched.
+    Every table reference in this module is schema-qualified (`disruption.shots`
+    and so on) and must stay that way. The lakehouse resolves an unqualified
+    name against `d3d` first, where `shots` is the 90,644-row plasma catalogue
+    -- so a bare `FROM shots` here would silently answer about the whole archive
+    instead of this 20-shot slice, and every guard in this file about population
+    claims would be reasoning from the wrong number.
     """
-    con = _connect()
-    try:
-        return [dict(r) for r in con.execute(sql, params)]
-    finally:
-        con.close()
+    return _query_api(sql, params)
 
 
 # --------------------------------------------------------------------------
@@ -121,12 +91,12 @@ def index_info():
     Always call this before quoting a count -- it states the slice size, which
     is what any 'how many' answer is actually about.
     """
-    run = _query("SELECT * FROM ingest_runs ORDER BY run_id LIMIT 1")
+    run = _query("SELECT * FROM disruption.ingest_runs ORDER BY run_id LIMIT 1")
     shots = _query(
         "SELECT COUNT(*) AS n_shots, SUM(disrupted) AS n_disrupted,"
-        " MIN(shot) AS shot_min, MAX(shot) AS shot_max FROM shots"
+        " MIN(shot) AS shot_min, MAX(shot) AS shot_max FROM disruption.shots"
     )[0]
-    rows = _query("SELECT COUNT(*) AS n FROM disruption_samples")[0]["n"]
+    rows = _query("SELECT COUNT(*) AS n FROM disruption.disruption_samples")[0]["n"]
     info = dict(run[0]) if run else {}
     info.update(shots)
     info["n_sample_rows"] = rows
@@ -148,7 +118,7 @@ def parameters(method=None, usable_only=False):
     units convention: an explicit unit string; '1' for a dimensionless
     quantity; NULL only when the unit is genuinely unknown.
     """
-    sql = "SELECT * FROM parameters"
+    sql = "SELECT * FROM disruption.parameters"
     clauses, args = [], []
     if method:
         clauses.append("method = ?")
@@ -162,9 +132,9 @@ def parameters(method=None, usable_only=False):
 
 def parameter_info(name):
     """Units, meaning and caveats for one parameter. Raises if unknown."""
-    rows = _query("SELECT * FROM parameters WHERE name = ?", (name,))
+    rows = _query("SELECT * FROM disruption.parameters WHERE name = ?", (name,))
     if not rows:
-        known = [r["name"] for r in _query("SELECT name FROM parameters ORDER BY name")]
+        known = [r["name"] for r in _query("SELECT name FROM disruption.parameters ORDER BY name")]
         raise KeyError(f"no parameter named {name!r}. Known: {', '.join(known)}")
     return rows[0]
 
@@ -172,7 +142,7 @@ def parameter_info(name):
 def unusable_parameters():
     """Parameters that return plausible but wrong values, with the reason."""
     return _query(
-        "SELECT name, long_name, caveat FROM parameters WHERE usable = 0 ORDER BY name"
+        "SELECT name, long_name, caveat FROM disruption.parameters WHERE usable = 0 ORDER BY name"
     )
 
 
@@ -182,7 +152,7 @@ def unusable_parameters():
 
 def shots(disrupted=None, shot_min=None, shot_max=None):
     """Shots in the index, optionally filtered. One row per shot."""
-    sql = "SELECT * FROM shots"
+    sql = "SELECT * FROM disruption.shots"
     clauses, args = [], []
     if disrupted is not None:
         clauses.append("disrupted = ?")
@@ -199,7 +169,7 @@ def shots(disrupted=None, shot_min=None, shot_max=None):
 
 
 def is_indexed(shot):
-    return bool(_query("SELECT 1 FROM shots WHERE shot = ?", (shot,)))
+    return bool(_query("SELECT 1 FROM disruption.shots WHERE shot = ?", (shot,)))
 
 
 def shot_summary(shot):
@@ -208,7 +178,7 @@ def shot_summary(shot):
     Raises ShotNotInIndex rather than returning a 'not disrupted' answer for a
     shot nobody analysed -- those are different statements.
     """
-    rows = _query("SELECT * FROM shots WHERE shot = ?", (shot,))
+    rows = _query("SELECT * FROM disruption.shots WHERE shot = ?", (shot,))
     if not rows:
         raise ShotNotInIndex(
             f"shot {shot} is not in this index. It has not been run through "
@@ -242,7 +212,7 @@ def fetch_samples(shot, columns=None, t_start=None, t_end=None,
     if not is_indexed(shot):
         raise ShotNotInIndex(f"shot {shot} is not in this index.")
 
-    known = {r["name"]: r for r in _query("SELECT * FROM parameters")}
+    known = {r["name"]: r for r in _query("SELECT * FROM disruption.parameters")}
     if columns is None:
         cols = [n for n, r in known.items() if r["usable"]]
     else:
@@ -259,7 +229,7 @@ def fetch_samples(shot, columns=None, t_start=None, t_end=None,
                 )
 
     select = ", ".join(['"shot"', '"time"'] + [f'"{c}"' for c in cols])
-    sql = f"SELECT {select} FROM disruption_samples WHERE shot = ?"
+    sql = f"SELECT {select} FROM disruption.disruption_samples WHERE shot = ?"
     args = [shot]
     if t_start is not None:
         sql += " AND time >= ?"
@@ -290,7 +260,7 @@ def disruption_label(shot, derived=False):
         return {"shot": shot, "disrupted": bool(s["disrupted"]),
                 "t_disrupt": s["t_disrupt"], "source": "time_until_disrupt (d3drdb, curated)"}
     rows = _query(
-        "SELECT current_quench_time FROM disruption_samples"
+        "SELECT current_quench_time FROM disruption.disruption_samples"
         " WHERE shot = ? AND current_quench_time IS NOT NULL LIMIT 1", (shot,))
     return {"shot": shot, "disrupted": bool(rows),
             "t_disrupt": rows[0]["current_quench_time"] if rows else None,
@@ -303,10 +273,10 @@ def label_disagreements():
     """Shots where the curated label and the derived indicator disagree."""
     return _query(
         "SELECT s.shot, s.disrupted AS curated_disrupted,"
-        " (SELECT COUNT(*) FROM disruption_samples d"
+        " (SELECT COUNT(*) FROM disruption.disruption_samples d"
         "  WHERE d.shot = s.shot AND d.current_quench_time IS NOT NULL) > 0"
         "   AS derived_disrupted"
-        " FROM shots s"
+        " FROM disruption.shots s"
         " WHERE curated_disrupted <> derived_disrupted ORDER BY s.shot"
     )
 

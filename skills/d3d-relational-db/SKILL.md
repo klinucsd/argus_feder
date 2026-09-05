@@ -39,8 +39,11 @@ actual waveform, use `d3d-shot-fetcher`, `d3d-filterscopes`, or `toksearch-mds`.
 
 ## No fdp wrapper needed
 
-This is a local SQLite file -- no network access, no Pelican, no `fdp`. Run
-scripts with plain `python script.py`.
+Served over HTTP by the FEDER lakehouse -- no Pelican, no `fdp`, and nothing to
+download or place in a folder. Run scripts with plain `python script.py`.
+
+It does need outbound network. If the service is unreachable the helper says so
+in those terms; there is no local copy to fall back to.
 
 ## Importing the helper
 
@@ -344,13 +347,13 @@ compressed ranges, sum `(hi - lo + 1)` for each range and confirm the total
 equals your stated count. If it doesn't, or if you are not certain a span is
 truly gap-free, list the shots individually instead of compressing them.
 
-## If the file is missing
+## If the lakehouse is unreachable
 
-`query_d3drdb()` raises `FileNotFoundError` with the exact folders it
-searched and the fix. It checks several folders (NRP persistent storage,
-`~/feder_data`, plain `~`, and on Colab plain `/content/` -- upload via the
-file browser, no Drive mount needed or supported) and, in each one, either
-filename (`d3drdb.sqlite` or `d3drdb_demo.sqlite`) -- both work everywhere,
-so don't rename the file to "fix" a not-found error, just place it in one of
-the listed folders. Surface the raised error message to the user rather than
-guessing an answer.
+`query_d3drdb()` raises `LakehouseError` naming the endpoint and what went
+wrong -- no outbound network, the service down, or a query the database
+refused. There is no local copy to fall back to, so surface the raised message
+to the user rather than guessing an answer or reporting an empty result.
+
+A result too large to return also raises rather than arriving truncated: a
+partial answer that looks complete is worse than an error. Aggregate in SQL
+(`COUNT`, `AVG`, `GROUP BY`) instead of pulling rows and counting them.

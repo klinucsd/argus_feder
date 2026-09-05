@@ -34,15 +34,13 @@ lookup order so both databases are found the same way:
 """
 import json
 import os
-import sqlite3
+import sys
 
-_FOLDERS = [
-    "~/work/_User-Persistent-Storage_CephBlock_/feder",
-    "~/feder_data",
-    "~",
-    "/content",
-]
-_FILENAMES = ["elm.sqlite", "elm_index.sqlite"]
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from d3d_lakehouse import LakehouseError  # noqa: E402,F401
+from d3d_lakehouse import endpoint as _endpoint, query as _query_api, scalar as _scalar  # noqa: E402
 
 
 class ShotNotIndexed(LookupError):
@@ -56,46 +54,15 @@ class ShotNotIndexed(LookupError):
 
 
 def locate_elm_db():
-    """Return the path to the ELM index sqlite file, or None if not found."""
-    candidates = []
-    env_path = os.environ.get("ELM_DB_PATH")
-    if env_path:
-        candidates.append(env_path)
-    for folder in _FOLDERS:
-        for fname in _FILENAMES:
-            candidates.append(os.path.expanduser(f"{folder}/{fname}"))
-    for p in candidates:
-        if p and os.path.exists(p):
-            return p
-    return None
+    """Retired. The index is served by the lakehouse; there is no local file.
 
-
-def _connect():
-    path = locate_elm_db()
-    if not path:
-        searched = ", ".join(
-            os.path.expanduser(f"{folder}/{{{'|'.join(_FILENAMES)}}}") for folder in _FOLDERS
-        )
-        raise FileNotFoundError(
-            f"ELM index not found. Searched $ELM_DB_PATH, then {searched}.\n"
-            f"Fix: place your copy (either name, {' or '.join(_FILENAMES)}) in "
-            "any of those folders -- on Colab, upload it via the file browser "
-            "(folder icon, left sidebar); it lands at /content/ automatically. "
-            "Note this must be re-uploaded each fresh Colab session."
-        )
-    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-    try:
-        con.execute("SELECT 1 FROM sqlite_master LIMIT 1")
-        return con
-    except sqlite3.OperationalError:
-        # A database left in WAL mode cannot be opened read-only unless its
-        # -shm/-wal sidecars are present or the directory is writable: SQLite
-        # reports the unhelpful "unable to open database file". Distributed
-        # copies should be in rollback-journal mode, but a WAL copy is easy to
-        # produce by accident, so fall back to immutable rather than failing.
-        # Safe here because this file is only ever read.
-        con.close()
-        return sqlite3.connect(f"file:{path}?immutable=1", uri=True)
+    Kept so that code or a notebook calling it gets an explanation rather than
+    an AttributeError.
+    """
+    raise NotImplementedError(
+        "The ELM index is no longer a local file -- it is served by the FEDER "
+        f"lakehouse at {_endpoint()}. Nothing needs downloading or placing in a "
+        "folder. Set $FEDER_API_URL to point at a different deployment.")
 
 
 def query_elm_index(sql, params=()):
@@ -103,13 +70,15 @@ def query_elm_index(sql, params=()):
 
     The escape hatch: use this for anything the named functions do not cover.
     Call `schema()` for the table and column reference.
+
+    Placeholders may be `?` or `%s`, and LIKE matches case-insensitively, so SQL
+    written against the old local file runs unchanged. Result keys resolve in
+    any case, so `r["shot"]` and `r["SHOT"]` are the same value.
+
+    A result too large to return raises rather than arriving truncated -- so
+    aggregate in SQL (COUNT, AVG, GROUP BY) rather than counting rows here.
     """
-    con = _connect()
-    try:
-        con.row_factory = sqlite3.Row
-        return [dict(r) for r in con.execute(sql, params).fetchall()]
-    finally:
-        con.close()
+    return _query_api(sql, params)
 
 
 def _default_run(granularity):
@@ -181,7 +150,10 @@ def elm_index_info():
     proportions. The index is a growing subset of the archive, not a census,
     and it is not a uniform sample -- see `caveats` in the returned dict.
     """
-    info = {"path": locate_elm_db()}
+    # `source` replaces the old `path`: the index is served, not a file on
+    # disk, and reporting a path that no longer exists would be worse than
+    # saying where the data actually comes from.
+    info = {"source": _endpoint()}
     info["runs"] = runs()
     row = query_elm_index(
         """SELECT COUNT(DISTINCT shot) shots, MIN(shot) lo, MAX(shot) hi
@@ -269,20 +241,27 @@ def elm_index_info():
 
 def schema():
     """Print the table and column reference, for writing SQL via query_elm_index."""
-    con = _connect()
-    try:
-        for (name, kind, sql) in con.execute(
-                """SELECT name, type, sql FROM sqlite_master
-                   WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'
-                   ORDER BY type DESC, name"""):
-            cols = [f"{r[1]} {r[2]}" for r in con.execute(f'PRAGMA table_info("{name}")')]
-            n = con.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
-            print(f"{kind.upper()} {name}  ({n:,} rows)")
-            for c in cols:
-                print(f"    {c}")
-            print()
-    finally:
-        con.close()
+    # information_schema, not sqlite_master + PRAGMA: the index is served by
+    # PostgreSQL now, and neither of those exists there. `load_state` is
+    # migration bookkeeping rather than ELM data, so it is left out.
+    rels = _query_api(
+        """SELECT table_name AS name, table_type AS kind
+           FROM information_schema.tables
+           WHERE table_schema = 'elm' AND table_name <> 'load_state'
+           ORDER BY table_type DESC, table_name""")
+    for rel in rels:
+        name, kind = rel["name"], rel["kind"]
+        cols = _query_api(
+            """SELECT column_name AS name, data_type AS type
+               FROM information_schema.columns
+               WHERE table_schema = 'elm' AND table_name = ?
+               ORDER BY ordinal_position""", (name,))
+        n = _scalar(f'SELECT COUNT(*) FROM elm."{name}"')
+        label = "VIEW" if "VIEW" in str(kind).upper() else "TABLE"
+        print(f"{label} {name}  ({n:,} rows)")
+        for c in cols:
+            print(f"    {c['name']} {c['type']}")
+        print()
 
 
 def runs():
@@ -443,31 +422,39 @@ def find_shots(shot_min=None, shot_max=None, status=None, signal_used=None,
 
     having = []
     if min_windows is not None:
-        having.append("n_windows >= ?");
+        having.append("COUNT(l.label_id) >= ?")
     if min_elmy_ms is not None:
-        having.append("elmy_ms >= ?")
+        having.append("COALESCE(SUM(l.end_time - l.start_time), 0) >= ?")
     if max_elmy_ms is not None:
-        having.append("elmy_ms <= ?")
+        having.append("COALESCE(SUM(l.end_time - l.start_time), 0) <= ?")
     if min_bursts is not None:
-        having.append("n_bursts >= ?")
+        having.append("(SELECT COUNT(*) FROM elm_labels b2 WHERE b2.shot = s.shot AND b2.run_id = ?) >= ?")
 
     label_clause = " AND l.label = ?" if label else ""
     sql = f"""
         SELECT s.shot, s.status, s.signal_used, s.signal_snr,
                COUNT(l.label_id) AS n_windows,
-               IFNULL(SUM(l.end_time - l.start_time), 0) AS elmy_ms,
+               COALESCE(SUM(l.end_time - l.start_time), 0) AS elmy_ms,
                (SELECT COUNT(*) FROM elm_labels b
                  WHERE b.shot = s.shot AND b.run_id = ?) AS n_bursts
         FROM elm_run_shots s
         LEFT JOIN elm_labels l
                ON l.run_id = s.run_id AND l.shot = s.shot{label_clause}
         WHERE {' AND '.join(where)}
-        GROUP BY s.shot
+        -- every selected column must be grouped or aggregated. SQLite let the
+        -- bare ones through and picked an arbitrary row. PostgreSQL does not,
+        -- is right to -- with more than one run per shot the un-grouped value
+        -- was whichever row the engine happened to keep.
+        GROUP BY s.shot, s.status, s.signal_used, s.signal_snr
     """
     params = [bu] + ([label] if label else []) + p
-    for v in (min_windows, min_elmy_ms, max_elmy_ms, min_bursts):
+    for v in (min_windows, min_elmy_ms, max_elmy_ms):
         if v is not None:
             params.append(v)
+    if min_bursts is not None:
+        # its HAVING clause repeats the burst-count subquery, so it binds the
+        # run id as well as the threshold
+        params += [bu, min_bursts]
     if having:
         sql += " HAVING " + " AND ".join(having)
     sql += " ORDER BY s.shot"
@@ -1164,12 +1151,12 @@ def shots_with_multiple_sources(min_sources=2, require_ground_truth=False, limit
     rows = query_elm_index(
         """SELECT s.shot,
                   COUNT(DISTINCT r.method) AS n_sources,
-                  GROUP_CONCAT(DISTINCT r.method) AS methods,
+                  STRING_AGG(DISTINCT r.method, ',') AS methods,
                   SUM(CASE WHEN r.method LIKE 'human%' THEN 1 ELSE 0 END) AS n_truth
              FROM elm_run_shots s JOIN elm_runs r ON r.run_id = s.run_id
             WHERE r.superseded = 0
             GROUP BY s.shot
-           HAVING n_sources >= ?
+           HAVING COUNT(DISTINCT r.method) >= ?
             ORDER BY n_sources DESC, s.shot""", (min_sources,))
     out = []
     for r in rows:

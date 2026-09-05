@@ -1,94 +1,52 @@
-"""d3d-relational-db helper: query the trimmed, demo-focused d3drdb subset.
+"""d3d-relational-db helper: query the DIII-D shot-metadata database (d3drdb).
 
-Local SQLite file -- no network, no fdp wrapper needed. Read-only: this is
-reference data supplied by GA, never written to.
+Served over HTTP by the FEDER lakehouse, not from a local file. There is
+nothing to download, nothing to place in a folder, and no copy to go stale --
+which is the whole reason for the change: the SQLite extract this skill used to
+read had to be shipped to every user, and was already drifting from the source.
 
-The file is looked up in each of these folders, in order, under EITHER
-filename (`d3drdb.sqlite` or `d3drdb_demo.sqlite`) -- verified 2026-08-02:
-different real deployments have used different filenames in different
-folders (JupyterHub/NRP: `d3drdb.sqlite`; this dev machine:
-`d3drdb_demo.sqlite`), and checking only one filename per folder caused a
-real "file not found" that cost a rename to work around. Checking both
-everywhere removes that trap entirely:
-  1. $D3DRDB_PATH (explicit override -- exact file, not a folder)
-  2. ~/work/_User-Persistent-Storage_CephBlock_/feder/  (NRP persistent -- primary)
-  3. ~/feder_data/                                      (local dev)
-  4. ~                                                   (simple fallback)
-  5. /content/                                           (Colab -- upload via the file browser)
+The endpoint exposes plasma-type shots only, through views that reproduce the
+old extract's semantics exactly, so every query in this file and in SKILL.md
+means what it always meant. `SELECT COUNT(*) FROM SHOTS WHERE SHOT BETWEEN
+190000 AND 195000` returns 3,507 from either source.
 
-On Colab, deliberately upload-only, NOT Google Drive: a Drive mount asks for
-a broad OAuth consent grant (real Colab UX, tried 2026-08-02: it also just
-failed there with "credential propagation was unsuccessful", a known
-flakiness point) -- too high-friction/alarming a first impression for a
-domain scientist. Plain upload to `/content/` via the Colab file browser
-needs zero code and is immediately found here. Tradeoff accepted: `/content/`
-does not survive a session restart, so this needs re-uploading each fresh
-Colab session -- deliberately chosen over Drive's persistence for the
-simpler, less scary flow.
+Two differences from the retired extract are worth knowing, both improvements:
 
-Contents: SHOTS, SHOTS_TYPE, SUMMARIES (already filtered to plasma-type shots
-only) + SIGNAL_NAMES, SIGNAL_INFO (catalog tables, not shot-specific). The two
-legacy disruption tables (DISRUPTIONS, disruption_warning) are NOT present --
-disruption labels come from a separate labels store, not from here.
+  * Text values are no longer space-padded. `WHERE topology = 'SNB'` returned
+    ZERO rows against the extract, whose values were stored as `'SNB       '`;
+    it now returns 35,727. Any code that worked around this with TRIM() can
+    stop.
+  * The catalogue is a newer dump: 90,644 plasma shots against the extract's
+    90,418. Counts over the whole archive differ slightly from figures
+    published before 2026-09.
+
+Tables: SHOTS, SHOTS_TYPE, SUMMARIES (plasma-type shots only) + SIGNAL_NAMES,
+SIGNAL_INFO (catalog tables, not shot-specific). The two legacy disruption
+tables are NOT here -- disruption labels come from a separate index.
+
+Needs outbound network. Set $FEDER_API_URL to point at a different deployment.
 """
 import os
-import sqlite3
+import sys
 
-_FOLDERS = [
-    "~/work/_User-Persistent-Storage_CephBlock_/feder",
-    "~/feder_data",
-    "~",
-    "/content",
-]
-_FILENAMES = ["d3drdb.sqlite", "d3drdb_demo.sqlite"]
-
-
-def locate_d3drdb():
-    """Return the path to the d3drdb sqlite file, or None if not found anywhere."""
-    candidates = []
-    env_path = os.environ.get("D3DRDB_PATH")
-    if env_path:
-        candidates.append(env_path)
-    for folder in _FOLDERS:
-        for fname in _FILENAMES:
-            candidates.append(os.path.expanduser(f"{folder}/{fname}"))
-    for p in candidates:
-        if p and os.path.exists(p):
-            return p
-    return None
-
-
-def _connect():
-    path = locate_d3drdb()
-    if not path:
-        searched = ", ".join(
-            os.path.expanduser(f"{folder}/{{{'|'.join(_FILENAMES)}}}") for folder in _FOLDERS
-        )
-        raise FileNotFoundError(
-            f"d3drdb file not found. Searched $D3DRDB_PATH, then {searched}.\n"
-            "Fix: place your copy of the file (either name, "
-            f"{' or '.join(_FILENAMES)}) in any of those folders -- on "
-            "Colab, upload it via the file browser (folder icon, left "
-            "sidebar); it lands at /content/ automatically, no code needed. "
-            "Note this must be re-uploaded each fresh Colab session."
-        )
-    # Read-only: this is GA's reference data, never write to it.
-    return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from d3d_lakehouse import LakehouseError  # noqa: E402,F401
+from d3d_lakehouse import endpoint as _endpoint, query as _query_api  # noqa: E402
 
 
 def query_d3drdb(sql, params=()):
     """Run a read-only SQL query against d3drdb. Returns a list of dicts.
 
+    Placeholders may be `?` or `%s`, and LIKE matches case-insensitively, so
+    SQL written for the old local file runs unchanged.
+
     Tables available: SHOTS, SHOTS_TYPE, SUMMARIES, SIGNAL_NAMES, SIGNAL_INFO.
     SHOTS/SHOTS_TYPE/SUMMARIES are pre-filtered to plasma-type shots only.
+
+    A result too large to return raises rather than arriving truncated --
+    aggregate in SQL (COUNT, AVG, GROUP BY) instead of counting rows here.
     """
-    con = _connect()
-    try:
-        con.row_factory = sqlite3.Row
-        rows = con.execute(sql, params).fetchall()
-        return [dict(r) for r in rows]
-    finally:
-        con.close()
+    return _query_api(sql, params)
 
 
 def plasma_shots_in_range(lo, hi):
@@ -137,7 +95,7 @@ def report_shot_summary(shot, fields):
         return f"Shot {shot}: no SUMMARIES row in d3drdb."
     lines = [f"Shot {shot} (values read directly from d3drdb SUMMARIES):"]
     for f in fields:
-        if f not in row.keys():
+        if f not in row:
             lines.append(f"  {f}: NOT A COLUMN in SUMMARIES")
         else:
             lines.append(f"  {f}: {_fmt(row[f])}")
