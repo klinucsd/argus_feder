@@ -2,9 +2,13 @@
 
 One module, copied verbatim into each skill that needs it, because skills are
 installed as self-contained directories under ~/.deepagents/agent/skills/ and
-cannot import from each other. Generated from
-`shared/skills/_shared/d3d_lakehouse.py` -- edit that copy and re-run
-`scripts/sync_lakehouse_client.py`, never a per-skill copy.
+cannot import from each other.
+
+THE MASTER IS `scripts/lakehouse_client/d3d_lakehouse.py`. Edit that one and run
+`scripts/sync_lakehouse_client.sh`; never edit a per-skill copy, and never put
+the master under `shared/skills/` -- the image copies that whole tree, so a
+non-skill directory there is installed as if it were a skill, with no SKILL.md,
+and lands in the agent's routing menu.
 
 Two properties matter more than anything else here.
 
@@ -43,24 +47,73 @@ TIMEOUT_SECONDS = float(os.environ.get("FEDER_API_TIMEOUT", "60"))
 # reachable without. Sent when present so nothing breaks the day the service
 # starts asking, and simply omitted when not -- there is no failure here.
 _TOKEN_ENV = ("FEDER_API_TOKEN", "FDP_TOKEN", "BEARER_TOKEN")
-_TOKEN_FILES = ("~/.fdp/token",)
+# Token files that exist but could not be read, so a 401 can say so
+# instead of reporting "no token".
+_UNREADABLE = []
+
+_TOKEN_FILES = (
+    "~/.fdp/token",
+    # NRP JupyterHub: /home/jovyan is ephemeral and a pod restart wipes
+    # ~/.fdp/token, while this path survives. Looking here too means a restart
+    # does not silently break every skill call -- which it did, the first time a
+    # pod came up on the endpoint-backed image.
+    "~/work/_User-Persistent-Storage_CephBlock_/.fdp/token",
+)
+
+
+def _expiry(token):
+    """The token's `exp` claim, or None if it cannot be read.
+
+    Decoded, not verified -- the service does the verifying. This only has to be
+    good enough to choose between two copies.
+    """
+    try:
+        import base64                                        # noqa: PLC0415
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload)).get("exp")
+    except Exception:                                        # noqa: BLE001
+        return None
 
 
 def bearer_token():
-    """The FDP token to present, or None. Never logged, never returned in error text."""
+    """The FDP token to present, or None. Never logged, never in error text.
+
+    An environment variable wins outright. Otherwise every candidate FILE is
+    read and the one expiring LATEST is used, rather than the first one found.
+
+    That matters on JupyterHub, where two copies routinely exist: `~/.fdp/token`
+    is what Pelican reads and is wiped by a pod restart, while the copy under
+    persistent storage survives. Taking the first would mean a stale leftover in
+    `~/.fdp/token` shadowing a freshly renewed token sitting right beside it --
+    presenting as "the database rejected my token" with a good one on disk.
+    """
     for var in _TOKEN_ENV:
         v = os.environ.get(var)
         if v and v.strip():
             return v.strip()
+
+    found = []
     for path in _TOKEN_FILES:
+        expanded = os.path.expanduser(path)
         try:
-            with open(os.path.expanduser(path)) as fh:
+            with open(expanded) as fh:
                 v = fh.read().strip()
-            if v:
-                return v
+        except PermissionError:
+            # Recorded rather than swallowed: a token with the wrong owner or
+            # mode otherwise presents as "no token", sending the reader to look
+            # for a file that is already there.
+            _UNREADABLE.append(expanded)
+            continue
         except OSError:
             continue
-    return None
+        if v:
+            found.append(v)
+    if not found:
+        return None
+    # -1 for an unreadable expiry, so a decodable token is preferred over one
+    # this cannot judge, while still returning something if none can be read.
+    return max(found, key=lambda t: (_expiry(t) or -1))
 
 
 class LakehouseError(RuntimeError):
@@ -123,6 +176,11 @@ def _post(path, payload):
         except Exception:                                        # noqa: BLE001
             pass
         if e.code == 401:
+            if _UNREADABLE:
+                raise LakehouseError(
+                    f"the lakehouse rejected this request, and a token file "
+                    f"exists but could not be read: {', '.join(_UNREADABLE)}. "
+                    f"Check its owner and mode.") from None
             raise LakehouseError(
                 "the lakehouse requires a valid FDP token and this one was not "
                 f"accepted: {detail}. Renew it (the same token used for DIII-D "

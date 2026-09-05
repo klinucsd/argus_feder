@@ -122,8 +122,8 @@ X.shots_with_multiple_sources(min_sources=4)
 # [{'shot': 163518, 'n_sources': 4,
 #   'methods': ['human_elm_events', 'human_regime', 'omfit_elm', 'slope_outlier'],
 #   'ground_truth': ['human_elm_events', 'human_regime'], 'has_expert_labels': True}]
-X.shots_with_multiple_sources(min_sources=3)          # 23 shots
-X.shots_with_multiple_sources(min_sources=2, require_ground_truth=True)   # 342 shots
+X.shots_with_multiple_sources(min_sources=3)          # shots labelled by 3+ runs
+X.shots_with_multiple_sources(min_sources=2, require_ground_truth=True)   # ...incl. a hand-labelled run
 ```
 
 **Never use our internal vocabulary in an answer.** These are implementation
@@ -161,22 +161,24 @@ Some runs are hand-labelled by a domain expert. They are the yardstick, not
 another opinion. `label_sets()` says which is which:
 
 ```python
-X.label_sets()["runs"]
-# run 1  slope_outlier     interval  elm_events      10829 shots  detector      [default]
-# run 2  slope_outlier     burst     elm_events      10829 shots  detector      [default]
-# run 3  human_regime      interval  regime_windows    397 shots  GROUND TRUTH
-# run 4  human_elm_events  burst     elm_events         23 shots  GROUND TRUTH
-# run 5  omfit_elm         burst     elm_events         23 shots  detector
+for r in X.label_sets()["runs"]:
+    print(r["run_id"], r["method"], r["granularity"], r["kind"],
+          r["shots"], "GROUND TRUTH" if r["is_ground_truth"] else "detector")
 ```
+
+Each row carries `is_ground_truth` and its own `shots` count. **Read them
+rather than assuming which run is which or how far it reaches** -- runs are
+added over time, and a hand-labelled run typically covers a small fraction of
+the shots a detector run does.
 
 Ground-truth runs are **scoped**: they cover only the shots and time windows a
 person actually labelled. Outside that scope they assert nothing -- absence is
 Rule 1 again, more sharply.
 
-Runs 1 and 2 are the blessed defaults. There is no implicit fallback: a query
-with no `run_id` uses the blessed run or raises. It never silently picks the
-newest, which would have quietly narrowed every answer to 23 shots once these
-comparison runs were added.
+The detector runs are the blessed defaults. There is no implicit fallback: a
+query with no `run_id` uses the blessed run or raises. It never silently picks
+the newest, which would have quietly narrowed every answer to the handful of
+hand-labelled shots once the comparison runs were added.
 
 ## Rule 9b: answer ELM counts from stored labels, never from new detection code
 
@@ -256,8 +258,9 @@ X.regime_summary(163518)
 `"L", LMODE background (not labeled)` means L-mode was never marked -- not that
 unmarked time is L-mode. Ramp-up, ramp-down and anything the labeller skipped
 land in the same gap. Report it as "no regime was marked here", and give both
-percentages when quoting a fraction, since "6% of the discharge" and "9.3% of
-the labelled time" are different claims.
+percentages when quoting a fraction: the same span is a different number as a
+fraction of the whole discharge than as a fraction of the labelled time, and
+those are different claims.
 
 ```python
 X.regime_windows(163518)[:2]
@@ -355,6 +358,8 @@ X.firing_rate_by_regime()["elmy_vs_quiescent"]
 # {'elmy_events_per_second': 34.23, 'quiescent_events_per_second': 3.96, 'ratio': 8.6}
 ```
 
+The shot counts and rates below move as the index grows -- read them from the
+call, not from here. Example output:
 ```
 slope_outlier vs human_regime over 320 shots
   ELMy H   317 shots   253.1 s   8664 events   34.23 /s
@@ -554,20 +559,22 @@ classes actually present, and caveats. Two traps it exposes:
   means the human regime labeller emits it, not that a detector claims QH.
   `label_sets()` gives the per-run breakdown.
 
-Real output (the index grows, so read the live values rather than these):
+`elm_index_info()` is the orientation call. It returns:
 
 ```python
 info = elm_index_info()
-# shots_indexed: 10926
-# shot_range: (55102, 207788)
-# status_counts: {'labeled': 9629, 'no_data': 856, 'error': 317, 'none_found': 127}
-# labels: {'run 1 (interval)': 26234, 'run 2 (burst)': 1318684,
-#          'run 3 (interval)': 2333, 'run 4 (burst)': 326, 'run 5 (burst)': 3637}
-# label_classes: ['BBQH', 'ELM', 'ELMy H', 'QH', 'WPQH',
-#                  'type1', 'type2', 'type3', 'type4', 'type5']   # pooled across runs
-# channels_tracked: ['fs03da', 'fs04', 'fs04da', 'fs05da']
-# low_snr_labeled_shots: 653
+# shots_indexed          how many shots have been through a detector
+# shot_range             (lowest, highest) shot in the index
+# status_counts          labeled / no_data / error / none_found
+# labels                 label count per run, keyed 'run N (granularity)'
+# label_classes          every class name, POOLED ACROSS RUNS -- read each one
+#                        back to its run via label_sets()
+# channels_tracked       the D-alpha channels the detector ran on
+# low_snr_labeled_shots  shots labelled despite a weak trace
 ```
+
+**Quote these from the call, never from memory.** The index grows as more shots
+are ingested and as new runs are added, so every one of these values moves.
 
 ## Rule 4: report a detector's PARAMETERS, never guess its ALGORITHM
 
@@ -622,7 +629,7 @@ harmonic oscillations and real D-alpha activity, and a slope threshold responds
 to it.
 
 **Therefore, the correct answer to "what fraction of DIII-D shots are ELMy?"
-is that this index cannot answer it.** Not "98.8% of analysed shots", not any
+is that this index cannot answer it.** Not "98.8% of analysed shots", not any <!-- lint-ok: a forbidden answer, quoted so it can be recognised -->
 figure with caveats attached. The label is not an ELMy/not-ELMy classification,
 so no denominator rescues it. Say so plainly, and say why: the detector labels
 essentially everything with a usable D-alpha trace.
@@ -789,12 +796,14 @@ fetch_estimate(186000)
 #  'likely_no_data': [], 'can_answer_by_fetching': [...], ...}
 
 fetch_estimate(range(200000, 200020))
-# 20 shots -> 620.0 MB, ~28 s serial (~18 s with 8 workers)
+# -> total megabytes, serial seconds, and seconds at 8 workers
 ```
 
-It also flags shots below the filterscope coverage boundary (shot 130882) as
+It also flags shots below the filterscope coverage boundary as
 `likely_no_data` — cheap misses at ~0.65 s and no payload — so a wide old range
-is not over-quoted.
+is not over-quoted. The boundary itself comes from the estimate, not from a
+number written here; filterscope coverage begins partway through the archive
+and a range reaching below it will be mostly misses.
 
 **Quote `megabytes` as the transfer cost, not the array size.** Reading four
 channels pulls whole tree files, so ~31 MB crosses the wire per shot while only
@@ -873,9 +882,11 @@ Two things to state when reporting what comes back:
 the coil currents and their time intervals. Deciding how many amps counts as
 energised is a judgement for the facility, not one to make here — see Rule 9b,
 which applies to regimes exactly as it applies to ELM counts. A threshold taken
-relative to each shot's own maximum is demonstrably wrong: it marks a QH-mode
-discharge, peaking at 1,537 A, as energised almost throughout, while a genuine
-RMP case peaks near 4,300 A.
+relative to each shot's own maximum is demonstrably wrong: a QH-mode discharge
+whose coils never leave the noise floor gets marked energised almost
+throughout, because its own maximum is tiny -- while a genuine RMP case peaks
+nearly an order of magnitude higher. Compare against an absolute current, and
+report the amps either way.
 
 **These coils are in PTDATA, not in the MDSplus `operations` tree.** Querying
 that tree returns `TreeNODATA` for most shots, which reads as "the archive does
@@ -915,9 +926,8 @@ alongside its own constituents** -- a table listing both "~1 kHz: 256" and
 
 ```python
 shots_with_signals(['fs04da', 'fs03da'], 190000, 195000)
-# {'have': [190067, 190300, ...],      # 20 shots
-#  'missing': [],
-#  'not_indexed_note': '20 shots in this range have been checked. Any shot in
+# {'have': [...], 'missing': [...],
+#  'not_indexed_note': 'N shots in this range have been checked. Any shot in
 #   the range not listed in either group has never been fetched, and its
 #   availability is unknown -- not absent.'}
 ```
@@ -976,36 +986,51 @@ the view `elm_labels_current` (labels from the default run only).
 `elm_labels` to it without constraining `run_id` on *both* sides counts every
 label once per run and silently doubles the totals.
 
+The same trap one level down: `elm_labels_current` is the default run of every
+granularity, not a single product. Constrain `granularity` whenever you count,
+sum or average over it.
+
 ## Joining to d3drdb
 
-Physics context lives in the other database. Attach it rather than
-re-implementing lookups -- and prefer the `d3d-relational-db` skill for
-anything that is purely a d3drdb question.
+Physics context lives in another schema of the SAME service, so a join is just a
+join -- no attaching, no second connection. Prefer the `d3d-relational-db` skill
+for anything that is purely a d3drdb question.
 
 ```python
-import sqlite3
-from d3d_elm_index import locate_elm_db
-import sys, os
-sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-relational-db"))
-from d3d_relational_db import locate_d3drdb
+from d3d_elm_index import query_elm_index
 
-con = sqlite3.connect(f"file:{locate_elm_db()}?mode=ro", uri=True)
-con.execute(f"ATTACH DATABASE 'file:{locate_d3drdb()}?mode=ro' AS d3d")
-rows = con.execute("""
+rows = query_elm_index("""
     SELECT l.shot, COUNT(*) n_windows,
            ROUND(SUM(l.end_time - l.start_time)) elmy_ms,
            ROUND(m.ipmax/1e6, 2) ip_MA, ROUND(m.kappa, 2) kappa
-    FROM elm_labels_current l
-    JOIN d3d.SUMMARIES m ON m.shot = l.shot
-    GROUP BY l.shot ORDER BY elmy_ms DESC LIMIT 5
-""").fetchall()
+    FROM elm.elm_labels_current l
+    JOIN d3d.summaries m ON m.shot = l.shot
+    WHERE l.granularity = 'interval'
+    GROUP BY l.shot, m.ipmax, m.kappa ORDER BY elmy_ms DESC LIMIT 5
+""")
 ```
 
-`d3d.SUMMARIES` also has `t_ip_flat` and `ip_flat_duration` (flattop timing),
-which lets an ELM window be placed within the discharge phase.
+**`WHERE l.granularity` is not optional.** `elm_labels_current` carries the
+default run of EVERY granularity -- interval windows AND individual bursts --
+so an unconstrained count mixes the two. On shot 149058 that is 84 "windows"
+and 4039 ms against the true 2 windows and 3595 ms: both plausible, both wrong,
+and nothing in the result says so. Decide which granularity the question means
+and say so in the query.
 
-If `locate_d3drdb()` returns None the d3drdb file is not installed; answer the
-ELM-only part and say the physics join is unavailable rather than guessing.
+**Every selected column must be grouped or aggregated.** `m.ipmax` and
+`m.kappa` are per-shot constants, so they look redundant in the GROUP BY -- but
+leaving them out is an error, not a convenience. Add them.
+
+Qualify the schema on both sides: `elm.` for the index, `d3d.` for the shot
+catalogue. `d3d.summaries` is plasma-type shots only, which is what almost every
+physics question means. `d3drdb.summaries` is the untrimmed catalogue -- every
+shot including power-supply tests and calibrations, substantially more rows --
+and is available if a question genuinely wants them, but is not the default and
+never the right denominator for "what fraction of DIII-D shots...". Count both
+sides if the difference matters to the answer.
+
+`d3d.summaries` also has `t_ip_flat` and `ip_flat_duration` (flattop timing),
+which lets an ELM window be placed within the discharge phase.
 
 ## Reporting rules
 

@@ -271,13 +271,21 @@ def disruption_label(shot, derived=False):
 
 def label_disagreements():
     """Shots where the curated label and the derived indicator disagree."""
+    # Wrapped in a subquery, and both sides cast to boolean, for two reasons
+    # SQLite tolerated and PostgreSQL does not: a SELECT alias is not visible in
+    # WHERE, and `disrupted` is an integer flag while the EXISTS test yields a
+    # boolean -- comparing the two raises rather than coercing.
     return _query(
-        "SELECT s.shot, s.disrupted AS curated_disrupted,"
-        " (SELECT COUNT(*) FROM disruption.disruption_samples d"
-        "  WHERE d.shot = s.shot AND d.current_quench_time IS NOT NULL) > 0"
-        "   AS derived_disrupted"
-        " FROM disruption.shots s"
-        " WHERE curated_disrupted <> derived_disrupted ORDER BY s.shot"
+        "SELECT * FROM ("
+        "  SELECT s.shot,"
+        "         (s.disrupted <> 0) AS curated_disrupted,"
+        "         EXISTS (SELECT 1 FROM disruption.disruption_samples d"
+        "                  WHERE d.shot = s.shot"
+        "                    AND d.current_quench_time IS NOT NULL)"
+        "           AS derived_disrupted"
+        "  FROM disruption.shots s"
+        ") t"
+        " WHERE curated_disrupted <> derived_disrupted ORDER BY shot"
     )
 
 

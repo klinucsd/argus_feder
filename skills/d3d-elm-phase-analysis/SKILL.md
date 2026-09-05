@@ -33,7 +33,8 @@ event index provides without re-running a detector.
 ## The five rules, in one place
 
 1. **Build on a detector run for coverage; validate it against hand labels.**
-   Keying an analysis on hand labels restricts it to 23 shots.
+   Keying an analysis on hand labels restricts it to the handful of shots that
+   have them.
 2. **Validate event times by millisecond offset**, not by whether one set's
    events fall inside the other's intervals.
 3. **The phase window is the user's choice** -- state it, report the fraction
@@ -56,17 +57,26 @@ both exist.**
 
 This is the mistake to avoid, and it is easy to make: hand-made labels look like
 the better choice because they are more accurate. They are also scarce and
-scoped. On shot 154749:
+scoped. On one hand-labelled shot: <!-- lint-ok: a worked example on one shot, not a coverage claim -->
 
 | label set | events | covers |
 |---|---|---|
-| hand-labelled | 15 | 2548-3362 ms -- **8%** of the Thomson record |
+| hand-labelled | 15 | 2548-3362 ms -- a small **%** of the Thomson record |
 | detector run | 125 | 619-5424 ms |
 
-and across the index, an analysis keyed on hand labels runs on **23 shots**
-against **10,840** for the detector run. Keying the analysis on ground truth
-silently restricts it to a couple of dozen discharges -- it produces a result
-for one shot that cannot be repeated on the archive.
+The same gap holds across the index: a hand-labelled run covers a small
+fraction of the shots a detector run does. Check it rather than assuming a
+figure -- compare the shot counts of the two runs before choosing:
+
+```python
+from d3d_elm_index import label_sets
+for r in label_sets()["runs"]:
+    print(r["run_id"], r["method"], r["is_ground_truth"], r["shots"])
+```
+
+Keying the analysis on ground truth silently restricts it to a couple of dozen
+discharges -- it produces a result for one shot that cannot be repeated on the
+archive.
 
 So: `elm_phase_at(shot, times)` with the default burst run for the work, and a
 separate validation step for confidence.
@@ -81,7 +91,7 @@ flips on sub-millisecond differences.
 Verified, expert event midpoints against detector-derived phase:
 
 ```
-shot 154749   detector mean burst 2.98 ms   offset median  +0.45 ms   14/15 within 5% of an ELM end
+shot 154749   detector mean burst 2.98 ms   offset median  +0.45 ms   14/15 near an ELM end
 shot 169908   detector mean burst 4.44 ms   offset median  -3.82 ms   22/22
 ```
 

@@ -134,8 +134,8 @@ presence via `getNode`+`getLength`, not a full data fetch, one shot at a time.
 of this function did `except Exception: available = False`, which turns any
 error into the claim "not archived". A model that wrote the signal name as
 `r"\\fs04"` (two backslashes -- see below) made every shot raise `TreeINVPATH`,
-and the scan reported **0 of 816 shots archived**, with timings, as a finding.
-The true answer for that range is that essentially every shot has it. Use the
+and the scan reported **0 of 816 shots archived**, with timings, as a finding. <!-- lint-ok: the wrong output of a past run, quoted to name the failure -->
+The true answer for that range was that essentially every shot had it. Use the
 version below: it separates a real absence from a broken query, and normalizes
 the signal name so the most common way of breaking it cannot happen.
 
@@ -263,10 +263,11 @@ into the same function:
   expr passed in as '\\fs04'   ->  archived=6
 ```
 
-The doubled name no longer changes the answer. Sampling the wider range by
-hand, 11/11 shots spread across 190000-191000 have `\fs04` archived with
-2.8-5.6 M samples each -- so any scan of that range reporting zero is a broken
-scan, not a gap in the archive.
+The doubled name no longer changes the answer. Filterscope coverage over a
+modern shot range is close to complete, so **a scan reporting zero across a
+wide range is a broken scan, not a gap in the archive** -- check the signal
+name before reporting the absence. Sample a handful of shots by hand to
+confirm before writing up any availability claim.
 
 **Cost note (measured, not a guess):** each shot costs roughly 200-400ms
 serially. The default `workers=8` gives close to a 5x speedup over serial (measured
@@ -280,10 +281,10 @@ rather than silently running long or silently sampling without saying so.
 
 ## Verify your own summary before presenting it
 
-Before stating a count or an "X out of Y" claim (e.g. "18 out of 18 shots have
-`\fs04`"), count the rows in the table you are actually about to display and
-confirm it matches. If a query returned 18 shots, the table you print must have
-18 rows and the text must say 18 -- not silently drop one while still claiming
+Before stating a count or an "X out of Y" claim, count the rows in the table
+you are actually about to display and confirm it matches. If a query returned N
+shots, the table you print must have N rows and the text must say N -- not
+silently drop one while still claiming
 the original total. This has happened before: correct availability-check code,
 correct data, but the final written table was missing a row the summary text
 didn't notice. Do the arithmetic on what you are about to show, not on what you

@@ -49,23 +49,24 @@ broadband, ...). This skill (below) is for `efit01` and other scalar/profile tre
 If the request asks for a single summary value per shot -- "what WAS the
 elongation," "what WAS the peak plasma current" -- rather than "plot ...
 versus time" or "how does X vary during the discharge," check
-`d3d-relational-db`'s `shot_summary()` FIRST, not this skill. It's a local
-SQLite lookup (no Pelican/MDSplus fetch needed) and is exactly what it's
-built for -- see its own "SUMMARIES gives ONE scalar per shot" note. Only
+`d3d-relational-db`'s `shot_summary()` FIRST, not this skill. It is a single
+lookup against the served catalog (no Pelican/MDSplus fetch needed) and is
+exactly what it is built for -- see its own "SUMMARIES gives ONE scalar per
+shot" note. Only
 fetch the raw MDSplus signal here if `d3d-relational-db` doesn't have the
 file, doesn't cover the specific quantity asked for, or the request
 genuinely wants the full time-resolved trace.
 
-**Verified 2026-08-02, and worth being precise about what was actually
-wrong here -- neither answer was incorrect.** The exact same question ("what
-was shot 190000's elongation and peak plasma current") got two different,
-both LEGITIMATE answers on two different runs: via `d3d-relational-db`,
-kappa=1.711 (one scalar) and peak Ip=0.911 MA; via a raw `efit01` fetch here,
-kappa ranged 1.08-1.83 across the discharge and peak Ip=0.896 MA (1.7%
-different from the database value) -- `SUMMARIES.ipmax` is a separately
-computed/stored database value, not the same thing as the raw `\ipmhd`
-trace's own empirical max; they're close because they describe the same
-physical event through different pipelines, not because either is wrong.
+**Worth being precise about what differs, because neither route is wrong.**
+Ask the same question ("what was this shot's elongation and peak plasma
+current") two ways and you get two different, both LEGITIMATE answers: via
+`d3d-relational-db`, one scalar per quantity; via a raw `efit01` fetch here, a
+range across the discharge and an empirical peak that sits a percent or so off
+the database value. `SUMMARIES.ipmax` is a separately computed and stored
+database value, not the same thing as the raw `\ipmhd` trace's own maximum;
+the two agree closely because they describe the same physical event through
+different pipelines, not because either is authoritative over the other. When
+an answer quotes one, say which.
 This rule exists for CONSISTENCY and SPEED (one cheap query beats several
 Pelican fetches and edit-retry cycles for a question this database already
 answers), not because the raw-fetch path was incorrect -- don't frame it that
@@ -240,8 +241,72 @@ below), not an error.
 | `rec.get("errors")` | `rec.errors` | `TypeError: ... missing 1 required positional argument: 'default'` |
 | `rec.has_error("x")` | `"x" in rec.errors` | `AttributeError` -- no such method |
 | `sig.shot()` | shot comes from `rec["shot"]` | `AttributeError` |
+| `sig.fetch(shot).time` / `.data` | `d = sig.fetch(shot)` then `d["times"]`, `d["data"]` | `AttributeError: 'dict' object has no attribute 'time'` |
+| `times * 1e3` "s -> ms" | `times` are ALREADY ms | no error -- silently 1000x wrong |
 | `MdsSignal(expression=..., tree=...)` | `MdsSignal(r"\ipmhd", "efit01")` | wrong kwarg names; the real signature is `MdsSignal(expression, treename, location=None, dims=("times",), ...)` |
 | `MdsSignal(r"\\ipmhd", "efit01")` | `MdsSignal(r"\ipmhd", "efit01")` | `MDSplus.mdsExceptions.TreeINVPATH: %TREE-E-INVPATH, Invalid tree pathname specified` |
+
+## Fetch through a Pipeline, not `Signal.fetch()` directly
+
+`MdsSignal(...)` and `PtDataSignal(...)` both expose a bare `.fetch(shot)`, and
+it does return data -- **a dict**, with keys `data`, `times`, `units` (PTDATA
+adds `n_over`/`n_under`). It is not an object: `.time` and `.data` raise
+`AttributeError`, and the time key is `times`, plural.
+
+Use the Pipeline form anyway:
+
+```python
+p = Pipeline([shot])
+p.fetch("ip", MdsSignal(r"\ipmhd", "efit01"))
+rec = p.compute_serial()[0]
+d, t = rec["ip"]["data"], rec["ip"]["times"]      # t is in MILLIseconds
+```
+
+It is the form every worked example here uses, so error handling, `rec.errors`
+and multi-shot iteration all follow from it.
+
+**Reading MDSplus and PTDATA in the same process is hazardous.** They bring
+separate C libraries, and combining them misbehaves. Measured:
+
+| what the script does | result |
+|---|---|
+| bare `MdsSignal.fetch()` then bare `PtDataSignal.fetch()` | **never returns, no output at all** |
+| bare `PtDataSignal.fetch()` then bare `MdsSignal.fetch()` | prints, then hangs at exit |
+| one `Pipeline` fetching BOTH signals | data always correct; process occasionally aborts at exit AFTER printing |
+| either source alone, any form | fine |
+
+**A comparison of `\ipmhd` against PTDATA `ip` is the request that walks
+straight into this**, so expect it whenever a question asks for both.
+
+Use one `Pipeline` for both signals -- the bare-fetch combination is the one
+that hangs with nothing to show:
+
+```python
+p = Pipeline([shot])
+p.fetch("efit", MdsSignal(r"\ipmhd", "efit01"))
+p.fetch("ptdata", PtDataSignal("ip"))
+rec = p.compute_serial()[0]
+```
+
+That form returned correct data on every run tried. It can still abort at
+teardown with `malloc_consolidate(): unaligned fastbin chunk detected` or
+`double free or corruption (fasttop)` -- roughly one run in seven, always
+*after* the results are printed. So **write results to a file before the script
+ends**, and read a non-zero exit alongside correct output as this teardown
+crash, not a failed fetch.
+
+The fully safe option, when a comparison has to be reliable, is to fetch each
+source in its OWN script and combine the two saved files afterwards: neither
+source alone has ever misbehaved.
+
+The symptom is easy to misread: the cell simply never finishes. It is not a
+slow fetch -- either signal on its own comes back in about a second.
+
+**`times` are milliseconds already.** Every signal in this archive returns a
+time base in ms -- an efit01 trace spans roughly 100 to a few thousand, a PTDATA
+trace starts before zero. Converting with `* 1e3` "s -> ms" produces no error
+and numbers that are 1000x too large, which then read as plausible microsecond
+timings. If a time range looks like millions, that conversion is why.
 
 ## Sampling rate: a time INTERVAL in ms is not a frequency in Hz
 
@@ -259,6 +324,25 @@ Verified 2026-08-03: an answer reported EFIT's cadence as "~20 Hz" from a
 right (50.2 Hz), so the two contradicted each other. This is the same slip as
 the filterscope `1e3/dt` mislabel -- worth an explicit check whenever a rate
 is derived from a time base.
+
+**When comparing two sources, derive each cadence from its OWN time base.**
+A raw digitizer trace and an equilibrium reconstruction are sampled orders of
+magnitude apart, and the digitizer also covers a much wider window -- that
+difference is usually the most interesting thing about the comparison, so
+quoting one source's interval for both erases the point. Compute both:
+
+```python
+for name, rec_field in (("ptdata", a), ("efit", b)):
+    t = np.asarray(rec_field["times"])
+    print(name, len(t), "samples,",
+          f"{np.median(np.diff(t)):.3f} ms", f"over {t[0]:.1f}..{t[-1]:.1f} ms")
+```
+
+An answer once described a PTDATA trace as "a high-rate raw trace ... ~20 ms
+cadence" -- the phrase contradicts itself, and 20 ms was the EFIT figure
+carried across. Sample counts and time spans that differ by a large factor
+imply the cadences differ too; if your two numbers come out equal, recheck
+which array each was measured on.
 
 ## Data access constraints
 

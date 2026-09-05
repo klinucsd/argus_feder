@@ -2,13 +2,13 @@
 name: signal-zoom
 description: "Render an INTERACTIVE, zoomable signal chart (Plotly, HighStock-style: drag to box-zoom, double-click to reset, range-slider to pan). Use ONLY when the request explicitly asks for a ZOOMABLE / INTERACTIVE / ZOOM-IN chart, or says zoom in/out, or mentions HighCharts / HighStock. For a normal plot/chart request WITHOUT such a term, do NOT use this skill -- render a static image (matplotlib PNG) as usual. Works for any time-series signal: filterscopes, EFIT scalars, multi-shot overlays."
 license: Apache-2.0
-compatibility: Colab (condacolab) -- see the TWO-STEP note below, this differs from the JupyterHub/Docker version
+compatibility: Designed for deepagents CLI with fdp-d3d
 metadata:
   author: DeepTok
-  version: "1.0-colab"
+  version: "1.0"
 ---
 
-# signal-zoom -- Interactive, Zoomable Signal Charts (Colab)
+# signal-zoom -- Interactive, Zoomable Signal Charts
 
 ## When to use (routing) -- the trigger term matters
 
@@ -17,203 +17,116 @@ Use this skill ONLY when the user's request contains a zoom/interactive trigger:
 `let me zoom in/out`, `HighCharts-style`, `HighStock-style`.
 
 If the request just says "plot" / "chart" / "show" with NO such term, do NOT use
-this skill -- produce a normal static image (matplotlib PNG) via `d3d-shot-fetcher`
-as usual. The interactive chart is opt-in via the trigger term; static image is
-the default.
+this skill -- produce a normal static image (matplotlib PNG) as usual. The
+interactive chart is opt-in via the trigger term; static image is the default.
 
-This applies even when an interactive chart seems like it would be nice
-unprompted "bonus" value -- e.g. after computing an aggregate result across
-many shots and wanting to visualize the winner. Don't reach for this skill
-just because a signal happens to be available or interesting to zoom into.
-Verified 2026-08-02: an aggregation-query request with no trigger word still
-triggered an unprompted attempt at this skill, which then failed to render
-silently -- wrong default and a silent failure, stacked. If a chart adds
-value but wasn't asked for as interactive, make it static instead.
+## What it renders
 
-## CRITICAL: this is a TWO-STEP pattern on Colab -- read before writing any script
+An interactive Plotly chart (display-only -- no kernel variables, no cross-cell
+state). The user interacts with it directly:
+- drag a box on the plot to zoom into that region,
+- double-click to zoom back out (autoscale),
+- drag the range slider under the plot to pan / set a window.
 
-On the JupyterHub/Docker image, fetching and plotting can happen in one
-in-kernel script. **On Colab this does NOT work**: Colab's kernel process
-imports its own `numpy` (2.0.2) as part of its own startup, before any user
-code runs. MDSplus needs `numpy<2` and can never be imported in-kernel here as
-a result -- no `sys.path` trick fixes this, since the wrong numpy is already
-bound in `sys.modules` before your script gets a chance to intervene
-(verified 2026-08-02, cost real live debugging to pin down).
+Full-resolution WebGL (Scattergl), so a ~400k-sample filterscope trace stays
+responsive and zooming reveals real detail such as individual ELM spikes.
 
-So fetching and plotting are two separate scripts, handed off through a
-small `.npz` file:
+## CRITICAL: run in-kernel, NOT via fdp
 
-1. **Fetch (subprocess, uses toksearch/MDSplus):**
-   ```
-   fdp run python /abs/path/to/fetch_script.py
-   ```
-2. **Plot (in-kernel, renders the chart):**
-   ```
-   python /abs/path/to/plot_script.py
-   ```
+An interactive chart must render in the notebook, so the script MUST run
+IN-KERNEL. Write it to a `.py` file and run it with plain:
 
-Step 2 never imports toksearch/MDSplus -- only numpy/plotly, which the
-kernel's own numpy (2.0.2, otherwise fine) handles without issue. This is why
-splitting the steps works even though in-kernel toksearch cannot.
+```
+python /path/to/script.py
+```
 
-**Also fixed (verified 2026-08-02): Colab's frontend needs Plotly's renderer
-set explicitly, or the chart silently doesn't render at all.** A first version
-of this skill ran with no errors anywhere, reported "the chart is now
-displayed," and produced nothing -- confirmed by checking output size (under
-1.1KB; a real rendered chart is 200KB+). `plot_signal_zoom()` now sets
-`plotly.io.renderers.default = "colab"` before calling `display()`. If a
-chart still doesn't appear, check the output for a printed
-`plot_signal_zoom: display(fig) failed: ...` line -- the old silent
-`except: pass` that hid this is now a visible print instead.
+Do NOT use the `fdp` wrapper here -- `fdp run python ...` runs in a subprocess and
+cannot render interactive output. The kernel already has the Pelican environment
+(bearer token + MDSplus tree paths + LD_PRELOAD), so a plain in-kernel `python`
+script fetches data with TokSearch normally. This is the one data task that does
+NOT use the fdp wrapper.
 
-## CRITICAL: the plot command must be BARE -- no `cd`, no `&&`, no pipes
-
-Write the plot step as a single bare `python /absolute/path/to/plot_script.py`
-and NOTHING else. Do NOT prefix it with `cd <dir> &&`. Do NOT pipe or redirect it.
-
-**Why this is not a style preference:** ARGUS only routes a command into the
-notebook kernel (where rendering is possible) if it parses as a simple
-`python <script>` invocation. A command containing ANY shell operator
-(`&&`, `|`, `;`, `>`, ...) is not intercepted at all -- it runs as a genuine
-subprocess, where an interactive chart can never render. The subprocess then
-exits 0 and looks completely successful.
-
-**Verified 2026-08-02, twice, and it is 100% silent:** a run whose plot step was
-`cd "<workspace>" && python plot_fs04_165920.py` produced no chart, no error,
-and no warning, while the agent reported "the chart rendered successfully."
-`display()` does not raise in a subprocess -- it just prints a repr -- so
-nothing anywhere indicates failure. `plot_signal_zoom()` now detects this case
-and prints a loud `ERROR: ... running in a SUBPROCESS ...` message telling you
-to re-run without the `cd`. **If you see that error, the fix is the command
-shape, not the code:** re-run the exact same script as a bare
-`python /abs/path/plot_script.py`.
-
-Use absolute paths everywhere (the `out_path` in step 1 and the script paths in
-both steps) so no `cd` is ever needed.
+**The command must also be BARE -- no `cd`, no `&&`, no pipes.** Use an
+ABSOLUTE script path and nothing else on the command line. ARGUS only routes a
+command into the kernel if it parses as a simple `python <script>` invocation;
+a command containing ANY shell operator (`&&`, `|`, `;`, `>`, ...) is not
+intercepted and runs as a genuine subprocess, where the chart can never render.
+Verified 2026-08-02 on the Colab port: a plot step written as
+`cd "<workspace>" && python plot.py` produced no chart, no error and no
+warning, while the agent reported success -- `display()` does not raise in a
+subprocess, it just prints a repr. `plot_signal_zoom()` now detects this and
+prints a loud `ERROR: ... running in a SUBPROCESS ...`; if you see it, re-run
+the same script as a bare `python /abs/path/script.py`.
 
 ## Import the helper
 
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import fetch_signal_for_zoom, plot_signal_zoom_from_npz
+from sage_signal_zoom import plot_signal_zoom
 ```
 
-## Step 1 -- fetch script (run via `fdp run`)
+## API
 
 ```python
-import os, sys
-sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import fetch_signal_for_zoom
-
-fetch_signal_for_zoom(
-    out_path="/content/zoom_data.npz",
-    shots=[165920],
-    expr=r"\fs04",
-    tree="spectroscopy",
-)
+plot_signal_zoom(times, data, title="Signal", y_label="", x_label="Time (ms)",
+                 series=None, height=500, max_points=None)
 ```
-Run with: `fdp run python /abs/path/to/fetch_script.py` (absolute path, no `cd`)
+- Single series: pass `times` and `data`.
+- Multiple overlaid signals: pass `series=[{"name","times","data"}, ...]`.
+- `max_points`: min-max decimation for display (default ~10000 -- keeps the range
+  slider responsive while preserving spikes, so ELM peaks stay visible). Pass None
+  to plot every raw sample (a ~400k filterscope trace at full resolution makes the
+  slider laggy).
 
-`fetch_signal_for_zoom(out_path, shots, expr, tree, names=None)`:
-- Fetches `expr` from `tree` for each shot (same `MdsSignal` pattern as
-  `d3d-shot-fetcher`/`d3d-filterscopes`).
-- Silently skips shots that error (matches every other skill's
-  `@pipe.where no_errors` convention) -- prints how many of the requested
-  shots actually got saved; check that count before assuming success.
-- `names`: optional display name per shot (default: the shot number as a
-  string). For a multi-shot overlay, pass one name per shot in the same
-  order as `shots`.
-- Writes ONE `.npz` file holding all series (times/data/name per shot) --
-  step 2 reads this file, nothing else needs to be passed between the steps.
+Display-only: it renders the chart and returns the figure; it sets NO kernel variable.
 
-## Step 2 -- plot script (run in-kernel, plain `python`)
-
-```python
-import os, sys
-sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import plot_signal_zoom_from_npz
-
-plot_signal_zoom_from_npz(
-    "/content/zoom_data.npz",
-    title="Shot 165920 — \\fs04 (D-alpha filterscope)",
-    y_label="ph/cm2/sr/s",
-)
-```
-Run with: `python /abs/path/to/plot_script.py` (NOT `fdp run` -- this step must
-render in-kernel for the interactive chart to display; and BARE, with no `cd`
-or `&&`, or it won't run in-kernel at all -- see the CRITICAL note above).
-
-`plot_signal_zoom_from_npz(npz_path, title="Signal", y_label="", x_label="Time (ms)", height=500, max_points=10000)`:
-- Loads the `.npz` written by step 1 and renders it via the same
-  min-max-decimated Plotly chart as before -- drag to box-zoom, double-click
-  to reset, range-slider to pan. Full-resolution WebGL (Scattergl), so a
-  ~400k-sample filterscope trace stays responsive and zooming reveals real
-  detail such as individual ELM spikes.
-- `max_points`: min-max decimation for display (default 10000 -- preserves
-  each bin's min AND max exactly, so spike peaks are never lost to
-  decimation, verified). Pass `None` to plot every raw sample (may be laggy
-  for a ~400k-point trace).
-- Display-only: renders and returns the figure, sets no kernel variable.
-
-## Complete example -- single signal (the canonical ELM-visibility case)
+## Complete example -- single signal
 
 Request: "Show a **zoomable** chart of `\fs04` for shot 165920."
 
-Fetch script (`fdp run python /content/fetch_fs04.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import fetch_signal_for_zoom
+from sage_signal_zoom import plot_signal_zoom
+from toksearch import Pipeline, MdsSignal
 
-fetch_signal_for_zoom("/content/fs04_165920.npz", [165920], r"\fs04", "spectroscopy")
+p = Pipeline([165920]); p.fetch("fs04", MdsSignal(r"\fs04", "spectroscopy"))
+rec = p.compute_serial()[0]
+sig = rec["fs04"]
+plot_signal_zoom(sig["times"], sig["data"],
+                 title="Shot 165920  \\fs04 (D-alpha filterscope)",
+                 y_label="ph/cm2/sr/s")
 ```
-
-Plot script (`python /content/plot_fs04.py`):
-```python
-import os, sys
-sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import plot_signal_zoom_from_npz
-
-plot_signal_zoom_from_npz("/content/fs04_165920.npz",
-    title="Shot 165920 — \\fs04 (D-alpha filterscope)", y_label="ph/cm2/sr/s")
-```
+Run it in-kernel: `python /home/jovyan/work/.../zoom_fs04.py`
 
 ## Complete example -- multi-shot overlay
 
 Request: "**Zoomable** comparison of plasma current for shots 165340 and 188702."
 
-Fetch (`fdp run python /content/fetch_ip.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import fetch_signal_for_zoom
+from sage_signal_zoom import plot_signal_zoom
+import numpy as np
+from toksearch import Pipeline, MdsSignal
 
-fetch_signal_for_zoom("/content/ip_compare.npz", [165340, 188702], r"\ipmhd", "efit01")
+p = Pipeline([165340, 188702]); p.fetch("ip", MdsSignal(r"\ipmhd", "efit01"))
+series = []
+for rec in p.compute_serial():
+    if "ip" in rec.errors:
+        continue
+    s = rec["ip"]
+    series.append({"name": str(rec["shot"]),
+                   "times": np.asarray(s["times"]),
+                   "data": np.asarray(s["data"]) / 1e6})   # raw is A -> MA
+plot_signal_zoom(series=series, title="Plasma current (zoomable)", y_label="MA")
 ```
-
-Plot (`python /content/plot_ip.py`):
-```python
-import os, sys
-sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/signal-zoom"))
-from signal_zoom_colab import plot_signal_zoom_from_npz
-
-plot_signal_zoom_from_npz("/content/ip_compare.npz",
-    title="Plasma current (zoomable)", y_label="A")
-```
-Note: `\ipmhd` is in amperes -- `fetch_signal_for_zoom` doesn't unit-convert,
-so if MA is wanted, convert before plotting (load the npz manually and divide
-by 1e6, or note the unit as A in the title/label as shown here).
 
 ## Rules
 
 - Only use when the request has a zoom/interactive trigger term (see routing).
-- ALWAYS two scripts: fetch via `fdp run python /abs/path/fetch.py`, then plot
-  via plain `python /abs/path/plot.py`. Never combine them into one script --
-  fetching cannot happen in-kernel here (see CRITICAL note above).
-- The plot command must be BARE -- absolute path, no `cd`, no `&&`, no pipes,
-  or it runs as a subprocess and silently renders nothing.
-- Do NOT build your own Plotly figure -- call `plot_signal_zoom_from_npz`
-  (or the lower-level `fetch_signal_for_zoom`/`plot_signal_zoom` if you need
-  more control, e.g. unit conversion before plotting).
+- Run the script IN-KERNEL with a bare `python /abs/path/script.py` -- never via
+  `fdp`, and never with `cd`/`&&`/pipes (those force a subprocess: no render).
+- Do NOT build your own Plotly figure -- call `plot_signal_zoom`.
 - Display-only: do NOT read any kernel variable afterward; it sets none.

@@ -168,17 +168,23 @@ the answer; do not bury it.
 **4. Report verification status, and distinguish its THREE states.** Read
 `verification_status`, not just the `verified` boolean:
 
-| status | count | what it means | how to say it |
-|---|---|---|---|
-| `verified` | 258 | fetched successfully | "verified on shots …" |
-| `failed` | 16 | tried on all 8 shots, errored every time | "attempted and failed; see `last_error`" |
-| `not_attempted` | 20 | **never tested** -- the verifier skips paths needing a channel/system argument | "untested, not failed -- it may work once a parameter is supplied" |
+| status | what it means | how to say it |
+|---|---|---|
+| `verified` | fetched successfully on the shots the verifier tried | "verified on shots …" |
+| `failed` | tried on every verifier shot, errored every time | "attempted and failed; see `last_error`" |
+| `not_attempted` | **never tested** -- the verifier skips paths needing a channel/system argument | "untested, not failed -- it may work once a parameter is supplied" |
 
-Verified 2026-08-03: `ece.channel.t_e.data` reads as unverified, and an answer
-reported it as "never fetched successfully" -- implying a failed attempt. It
-was simply never tried, and fetches perfectly as `\ECE::TOP.TECE.TECE01`
-(65,536 samples, -0.008..2.84 keV). Never describe a `not_attempted` row as
-having failed.
+How many fields sit in each state changes as verification runs, so read the
+tally rather than quoting a figure:
+
+```python
+table_info()["summary"]     # counts per state, per IDS, and what was verified against
+```
+
+**`not_attempted` is not `failed`.** An answer once reported an untested field
+as "never fetched successfully", implying an attempt that had never happened --
+the field fetched perfectly once its channel argument was supplied. When a row
+is `not_attempted`, say it is untested and name what it needs.
 
 **5. Mappings are time-scoped.** Availability changes across DIII-D's history:
 diagnostics were added and retired, and sampling rates changed by up to 100x
@@ -213,9 +219,16 @@ them with `PtDataSignal(pointname)` and no tree argument, via `fdp run`
 channel or system argument (`required_parameters` lists which). Don't present
 `\ECE::TOP.TECE.TECE{01-NUMCH}` as if it were a fetchable signal.
 
-**9. Coverage is partial -- 294 of 566 IMAS fields.** Don't imply the table is
-the complete IMAS standard. If something is absent, that means it is absent
-from *this table*, not that it doesn't exist in IMAS.
+**9. Coverage is partial.** Don't imply the table is the complete IMAS
+standard. If something is absent, that means it is absent from *this table*,
+not that it doesn't exist in IMAS.
+
+`table_info()["summary"]` gives how many fields the table holds and how they
+break down by IDS -- quote those. It does **not** carry a total for the IMAS
+standard itself, so **do not state a fraction of IMAS**: any denominator for
+that is not in this data, and it moves with the IMAS version independently of
+anything here. Say what the table covers and what it does not, without a
+percentage.
 
 ## Functions
 

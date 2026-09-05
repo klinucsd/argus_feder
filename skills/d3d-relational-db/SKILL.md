@@ -1,6 +1,6 @@
 ---
 name: d3d-relational-db
-description: "DIII-D signal catalog and shot-metadata database (d3drdb), as a trimmed plasma-shots-only local copy. REQUIRED for any question about what a DIII-D signal, tag or pointname MEANS -- including questions phrased as explanation rather than data, such as 'what is FS02UPDA', 'what does EFIT01::BT0VAC mean in plain English', 'what does this signal measure', 'what are its units'. Those are catalog lookups, not general knowledge: DIII-D tag names are not self-describing and answering from the name has produced wrong meanings, so call explain_signal(tag) and quote what it returns. Also REQUIRED for per-shot scalars (elongation, plasma current, pulse length, neutron yield, peak beta_N, disruption time) -- call report_shot_summary(shot, fields) and quote it -- and for which shots exist in a range, plasma-shot filtering, and which MDSplus tree and path a signal lives in. Catalog and metadata only, NOT the raw time series: for a waveform use d3d-shot-fetcher / d3d-filterscopes / toksearch-mds."
+description: "DIII-D signal catalog and shot-metadata database (d3drdb). REQUIRED for any question about what a DIII-D signal, tag or pointname MEANS -- including questions phrased as explanation rather than data, such as 'what is FS02UPDA', 'what does EFIT01::BT0VAC mean in plain English', 'what does this signal measure', 'what are its units'. Those are catalog lookups, not general knowledge: DIII-D tag names are not self-describing and answering from the name has produced wrong meanings, so call explain_signal(tag) and quote what it returns. Also REQUIRED for per-shot scalars (elongation, plasma current, pulse length, neutron yield, peak beta_N, disruption time) -- call report_shot_summary(shot, fields) and quote it -- and for which shots exist in a range, plasma-shot filtering, and which MDSplus tree and path a signal lives in. Catalog and metadata only, NOT the raw time series: for a waveform use d3d-shot-fetcher / d3d-filterscopes / toksearch-mds."
 license: Apache-2.0
 compatibility: Designed for deepagents CLI
 metadata:
@@ -28,13 +28,41 @@ whose name this catalog does not know -- **BES especially** -- use
 `d3d-shot-fetcher`. Use this skill for what a catalogued name MEANS, its units,
 and per-shot scalars.
 
+## And an EMPTY column is not evidence either
+
+A SUMMARIES column that exists but holds no values means **this table does not
+carry that quantity**. It does not mean the quantity is unmeasured, underived or
+unavailable for the shot. Before answering "there is no X", check whether X is
+fetchable as a signal -- `d3d-shot-fetcher` first, then this skill's catalog for
+what the name means.
+
+**Zeff is the worked example, and it has already gone wrong (2026-09-04).**
+Asked for Zeff on a shot, an answer correctly found `SUMMARIES.zeff` empty for
+every row, correctly quoted the `ZEFF01`-`ZEFF16` bremsstrahlung
+channels from the catalog, and then concluded Zeff "would have to be computed
+from the bremsstrahlung diagnostic data". It is not computed; it is fetched:
+
+```python
+from toksearch import MdsSignal
+MdsSignal(r"\zeff", "d3d")     # 294 samples for 165340, Zeff 1.37-3.00
+```
+
+`d3d-shot-fetcher` documents that exact shot and that exact call, including why
+`tree="IONS"` fails and `tree="d3d"` works. The answer was honest about what it
+had checked and still under-answered a question that had a real answer.
+
+So: **empty scalar column -> ask d3d-shot-fetcher before concluding.** Say "this
+table does not carry it" rather than "it is not available", unless you have
+actually looked.
+
 ## What this is, and what it is NOT
 
 d3drdb is DIII-D's shot-metadata database (shot list, physics summary scalars,
-signal catalog). This skill queries a **trimmed, local, read-only copy** --
-plasma-type shots only, 5 tables, no legacy/unusable data. It is NOT a live
-connection to GA's real d3drdb server, and it is NOT the raw signal data --
-d3drdb tells you a shot's characterization and what signals exist; to fetch an
+signal catalog). This skill queries a **trimmed, read-only view** served by the
+FEDER lakehouse -- plasma-type shots only, no legacy/unusable data, and a small
+fixed set of tables. It is NOT a live connection to GA's real d3drdb server,
+and it is NOT the raw signal data -- d3drdb tells you a shot's
+characterization and what signals exist; to fetch an
 actual waveform, use `d3d-shot-fetcher`, `d3d-filterscopes`, or `toksearch-mds`.
 
 ## No fdp wrapper needed
@@ -88,7 +116,8 @@ measurement that happens to be absent.
 ran the right query on the right columns for shot 144921 -- `s.get("neutrons")`,
 `s.get("betanmax")`, `s.get("t_betanmax")` -- and then wrote different numbers
 into its report: `1.094e+16` instead of `3.98594e+15`, `2.317` instead of
-`3.1168`, `3.206 s` instead of `3.905 s`. Wrong by 2.7x, by 34%, and by 0.7 s.
+`3.1168`, `3.206 s` instead of `3.905 s`. Wrong by 2.7x, by 34%, and by 0.7 s. <!-- lint-ok: the size of a past transcription error, not a fact about the data -->
+
 The one field that came out right was `gas`, the only one that is a string.
 Nothing in the answer looked wrong; three plausible scalars in a fluent
 sentence give a reader nothing to check against.
@@ -146,27 +175,38 @@ this tree`; do not quote the placeholder as though it described the signal.
 
 ## Trap: do NOT filter on `PLASMA_SHOT`
 
-`SHOTS.PLASMA_SHOT` looks like the plasma filter and is not. It is NULL for
-90,416 of 90,418 rows, and the two populated values are the **string** `'1'`,
-not the integer 1. `WHERE PLASMA_SHOT = 1` therefore returns 2 rows and looks
-like a catastrophic archive, which has already misled one analysis.
+`SHOTS.PLASMA_SHOT` looks like the plasma filter and is not. It is NULL on
+all but a handful of rows, and where it IS populated the value is the
+**string** `'1'`, not the integer 1. `WHERE PLASMA_SHOT = 1` therefore matches
+almost nothing and looks like a catastrophic archive, which has already misled
+one analysis.
 
 There is nothing to filter: **every row in this file is already a plasma
 shot**. Count them with a plain `SELECT COUNT(*) FROM SHOTS WHERE SHOT BETWEEN
 ? AND ?`, or use `plasma_shots_in_range(lo, hi)`.
 
 ```python
-plasma_shots_in_range(190000, 195000)      # correct -- 3,507 shots
+plasma_shots_in_range(190000, 195000)      # correct -- returns the shot list
 query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE SHOT BETWEEN 190000 AND 195000")
-# [{'n': 3507}]   correct
+# correct -- and it agrees with len(plasma_shots_in_range(...))
 
 # WRONG -- returns 2, because PLASMA_SHOT is unpopulated
 query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE PLASMA_SHOT = 1")
 ```
 
-## Tables (only these 5 exist in this file)
+## Tables
 
-- **SHOTS** -- one row per shot, 17 columns. Core: `SHOT` (int, primary key),
+The notes below say what each table is for. Column counts and fill levels are
+properties of the current snapshot, so measure them rather than quoting a
+figure:
+
+```python
+query_d3drdb("SELECT table_name FROM information_schema.tables"
+             " WHERE table_schema = 'd3d' ORDER BY table_name")
+len(query_d3drdb("SELECT * FROM SUMMARIES LIMIT 1")[0])   # how many columns
+```
+
+- **SHOTS** -- one row per shot. Core: `SHOT` (int, primary key),
   `BRIEF` (short text description of the shot), `SHOT_TYPE`, `SHOT_OK`
   (quality flag). Also present: `RUN` (run/session date, e.g. `'20160128'`),
   `ENTERED` (timestamp the record was entered), `USERNAME` (who entered it),
@@ -174,11 +214,20 @@ query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE PLASMA_SHOT = 1")
   (**a trap -- see below**),
   `TOTAL_UNCOMPRESSED_SIZE`/`TOTAL_COMPRESSED_SIZE` (archive size),
   `INIT_TIME`/`STORE_TIME`/`ANALYSIS_TIME`, `DBKEY`. Several of these
-  (`CHIEF_OPERATOR`, `INIT_TIME`, `STORE_TIME`) are frequently NULL in this
-  data -- check for `None` before relying on them. Already filtered to
+  (`CHIEF_OPERATOR`, `USERNAME`, `INIT_TIME`, `STORE_TIME`) are frequently NULL
+  in this data -- check for `None` before relying on them. Already filtered to
   plasma-type shots only.
+
+  **`BRIEF` is free text and is not an attribution field.** It often contains a
+  string that looks like one -- an operator or process name followed by a
+  timestamp -- while `USERNAME` for the same row is NULL. Answer "who entered
+  this record" from `USERNAME`, and if it is NULL say so; quoting `BRIEF`
+  instead reports as a database field something that is only a note. The two
+  timestamps can disagree as well: `ENTERED` is the column, while any time
+  inside `BRIEF` is part of that free text, and they need not match. Say which
+  one a stated time came from.
 - **SHOTS_TYPE** -- `shot`, `shot_type` (always `'plasma'` in this file), `source`.
-- **SUMMARIES** -- one row per shot, **82 columns** of physics/operational
+- **SUMMARIES** -- one row per shot, a wide set of physics/operational
   scalars. `shot_summary()` already returns ALL of them (plain `SELECT *`) --
   the groups below exist so you know what's available and can choose to use
   it, not because the code restricts anything.
@@ -210,11 +259,11 @@ query_d3drdb("SELECT COUNT(*) n FROM SHOTS WHERE PLASMA_SHOT = 1")
     just `IS NOT NULL`, or you'll count "no fault" shots as having fault
     data**) -- see the CRITICAL note below before using ANY of these as a
     disruption label.
-  - *Impurities/radiation*: `zeff` (effective charge -- **empty in this
-    snapshot, 0 of 90,418 rows populated; the column exists but has no usable
-    data here, say so rather than querying it as if it will return a value**),
+  - *Impurities/radiation*: `zeff` (effective charge -- **the column exists but
+    has been empty in every snapshot so far; check it before use and say so
+    rather than reporting it as if it will return a value**),
     `gamma_n`/`t_gamma_n`, `neutrons` (neutron yield, a fusion-reaction-rate
-    proxy -- well populated, ~53% of rows),
+    proxy -- populated on roughly half the rows),
     `FE23_AVG`/`FE16_AVG`/`NI26_AVG`/`NI17_AVG`/`MO32_AVG` and their `_MAX`
     counterparts (impurity spectral-line intensities -- iron/nickel/
     molybdenum charge states, common wall/divertor material tracers).
@@ -297,7 +346,7 @@ live database. State this if asked how current/complete the data is.
 
 ```python
 # Which plasma shots exist in a range (was: d3drdb <=> Pelican availability, Q7)
-shots = plasma_shots_in_range(190000, 195000)   # 3,507 shots
+shots = plasma_shots_in_range(190000, 195000)   # every plasma shot in range
 
 # Physics characterization for one shot -- returns ALL 82 SUMMARIES columns,
 # not just the well-known ones. Shown here truncated to a few of interest
