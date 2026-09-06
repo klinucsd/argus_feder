@@ -55,7 +55,7 @@ import os, sys
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-elm-index"))
 from d3d_elm_index import (
     elm_index_info, schema, runs, query_elm_index,
-    is_indexed, shot_status, elm_windows, elm_bursts, was_elmy_at,
+    is_indexed, indexed_shots, shot_status, elm_windows, elm_bursts, was_elmy_at,
     elm_statistics, find_shots,
     signal_availability, shots_with_signals, coverage_summary,
     compare_runs, fetch_estimate, locate_elm_db, ShotNotIndexed,
@@ -222,22 +222,34 @@ the answer key is 17 ms, so an unclipped whole-shot run would appear to have
 hundreds of "extra" events it never claimed were in that window.
 
 ```python
-X.compare_on_shot(154749)
-# comparable_window_ms: [2548.0, 3362.0]
-# run 1  slope_outlier     detector          1 events  labeled   (interval: ELMy phases)
-# run 2  slope_outlier     detector         14 events  labeled
-# run 4  human_elm_events  ground truth     15 events  labeled
-# run 5  omfit_elm         detector         14 events  labeled
-
-X.compare_on_shot(180445)      # a no-plasma control shot
-# run 2  slope_outlier     detector       372 events  labeled
-# run 4  human_elm_events  ground truth     0 events  none_found
-# run 5  omfit_elm         detector         0 events  error
-# warning: ... Zero-because-it-crashed is not zero-because-it-found-nothing;
-#          do not read it as agreement with a ground truth of 0.
+shot = X.shots_with_multiple_sources(min_sources=2)[0]["shot"]
+X.compare_on_shot(shot)
+# comparable_window_ms: [<lo>, <hi>]
+# one row per EVENT-LEVEL run that covers this shot:
+#   run_id, method, display_name, granularity,
+#   source              'ground truth' or 'detector'
+#   n_events_in_window  clipped to the comparable window
+#   status, error       'labeled' | 'none_found' | 'error' | 'no_data'
+# plus a `warning` when a detector CRASHED and therefore reported zero.
 ```
 
-**Report a crashed detector's zero as a failure, never as agreement.**
+**Which runs appear depends on the shot, and the sets barely overlap.** A run
+covers a shot only if it was executed on it; do not assume the detector runs
+and the hand-labelled runs both reached any given shot. Check before comparing:
+
+```python
+[ (r["run_id"], r["status"]) for r in X.shot_status(shot) ]
+```
+
+**A run that is absent is not a run that found nothing.** Treating "never
+executed here" as "detected zero events" silently invents agreement -- observed
+on a real run, where an index-wide detector-vs-expert comparison counted
+never-analysed shots as detector zeros. `compare_on_shot()` lists only the runs
+that actually cover the shot, which is why it is the right call for this.
+
+**Report a crashed detector's zero as a failure, never as agreement.** When
+`status` is `error`, `n_events_in_window` is 0 because nothing ran, and the
+returned `warning` says so.
 
 Regime context, when the shot has it:
 
@@ -304,6 +316,34 @@ QH/WPQH spans, marking ELMy stretches within an otherwise quiescent phase.
 which is what makes "n in quiescent" counts correct -- resolving overlaps the
 other way inflated shot 163518 from 44 quiescent bursts to 75.
 
+### Building a timeline: hand `regime_at()` the whole timebase
+
+`regime_at()` takes a single time **or any sequence of times** and returns a
+list, resolved from one fetch:
+
+```python
+timeline = regime_at(shot, range(0, 6001))     # one call, not 6001
+```
+
+Do NOT loop it. `for t in range(0, 6001): regime_at(shot, t)` asks the same
+question six thousand times; before the windows were cached that was six
+thousand round trips and several minutes of silence, and it is still the wrong
+shape. Coalesce the returned list into segments in Python:
+
+```python
+segs, prev = [], None
+for t, r in enumerate(timeline):
+    lab = r["regime"] or "unlabelled"
+    if prev is None or lab != prev[0]:
+        if prev:
+            segs.append((prev[0], prev[1], t - 1))
+        prev = (lab, t)
+segs.append((prev[0], prev[1], len(timeline) - 1))
+```
+
+The windows themselves are cached per shot, so `regime_windows()` is free after
+the first call; pass `refresh=True` if labels have just been ingested.
+
 ### Counting a detector's events by regime
 
 **For one shot, call `events_by_regime(shot)`; across shots, call
@@ -331,15 +371,25 @@ hand, and the whole answer stays on one convention.
 sample far slower than ELMs recur, so every sample lands at an arbitrary phase
 and averaging them smears out the structure being studied.
 
+Phase needs the BURST run's events, so it is defined only on shots that run
+covers. Pick one rather than assuming -- a shot may carry expert labels and no
+detector run, in which case these raise `ShotNotIndexed` and the message tells
+you to check `shot_status()`:
+
 ```python
-X.elm_phase_at(154749, [2600.0, 2600.5])
-# phase 0.7131 / 0.7145, in_elm False, ms_since_last_elm 248.6 / 249.1
+shot = X.find_shots(min_bursts=1, limit=1)[0]["shot"]   # a burst-covered shot
+
+X.elm_phase_at(shot, [t0, t1])
+# ONE dict with PARALLEL LISTS, not a list of dicts:
+#   shot, run_id, method, n_times
+#   phase, in_elm, ms_since_last_elm, ms_until_next_elm, covered  <- lists
+#   n_in_elm, n_covered                                           <- totals
 # convention: 0 just after an ELM, rising to 1 just before the next;
 #             -1 to 0 during an ELM; None outside the event span
 
-X.select_by_elm_phase(154749, times, phase_range=(0.5, 1.0))
-# {'n_kept': 104, 'n_times': 185, 'fraction_kept': 0.5622,
-#  'n_dropped': {'in_elm': 9, 'outside_phase': 72, 'not_covered': 0, ...}}
+X.select_by_elm_phase(shot, times, phase_range=(0.5, 1.0))
+# {'shot', 'run_id', 'method', 'phase_range', 'n_times', 'n_kept',
+#  'fraction_kept', 'keep_indices', 'n_dropped', 'min_ms_since_elm', 'caveat'}
 ```
 
 Phase is derived from stored event times -- nothing is cached, and no column
@@ -575,6 +625,142 @@ info = elm_index_info()
 
 **Quote these from the call, never from memory.** The index grows as more shots
 are ingested and as new runs are added, so every one of these values moves.
+
+## More than one shot? Use the batch call
+
+Every helper here talks to a service over HTTP, so a single-shot helper costs
+one round trip. A loop over a shot list turns one question into hundreds of
+requests -- the difference between a second and several minutes, and the cell
+looks hung while it happens because output is buffered until the script ends.
+
+| one shot | many shots |
+|---|---|
+| `is_indexed(shot)` | `indexed_shots(shots)` -> sorted list |
+| `compare_on_shot(shot)` | `compare_on_shots(shots)` -> {shot: same dict} |
+| -- | `shots_with_signals(signals, lo, hi)` |
+| -- | `find_shots(...)`, `fetch_estimate(shots)` |
+
+`shots_with_multiple_sources()` and `label_sets()` are already index-wide.
+
+The single-shot forms are still there and still correct; they are for one shot.
+**If a question mentions a range, a cohort, "which shots", "compare across" or
+any plural, the query should mention them all.**
+
+Comparing label sets on several shots is the case worth calling out, because
+getting it wrong is silent rather than slow. Each shot has its OWN comparable
+window -- the intersection of the analysis windows the runs recorded for that
+shot -- and every count is clipped to it. `compare_on_shots()` resolves each
+shot's window separately; a hand-rolled comparison that reuses one shot's
+window for another, or that derives a window from the span of the labels
+instead of the recorded window, returns counts that look reasonable and are
+wrong. Let the helper compute the window.
+
+## The database is PostgreSQL -- what that changes
+
+The service runs PostgreSQL. A thin compatibility layer at the boundary absorbs
+the SQLite spellings that translate exactly, so these all work as written and
+need no thought:
+
+| you write | why it works |
+|---|---|
+| `?` placeholders | rewritten to `%s` |
+| `LIKE 'FS04%'` | rewritten to `ILIKE`, keeping SQLite's case-insensitive match |
+| `IFNULL(x, 0)` | renamed to `COALESCE` |
+| `ROUND(x, 2)` on a float | an overload is installed for it |
+
+Everything else is PostgreSQL, and these four are the ones that actually cost
+retries. Each was confirmed against the live service:
+
+| this fails | error | write instead |
+|---|---|---|
+| `GROUP_CONCAT(sig, ',')` | `function group_concat(text, unknown) does not exist` | `STRING_AGG(sig, ',')` |
+| a SELECT alias in `HAVING` | `column "n" does not exist` | wrap in a subquery |
+| a SELECT alias in `WHERE` | `column "r" does not exist` | wrap in a subquery |
+| an aggregate in `GROUP BY` | `aggregate functions are not allowed in GROUP BY` | wrap in a subquery |
+
+`GROUP_CONCAT` is not auto-translated on purpose: `STRING_AGG` takes a
+delimiter argument, so a silent rewrite would have to invent one, and a
+rewrite that changes meaning is worse than an error naming the function.
+
+The subquery form covers three of the four:
+
+```sql
+SELECT * FROM (
+  SELECT shot, COUNT(*) AS n FROM signal_availability GROUP BY shot
+) t WHERE n > 1
+```
+
+**Every selected column must be grouped or aggregated.** `SELECT shot, signal,
+COUNT(*) ... GROUP BY shot` fails with `column "signal" must appear in the
+GROUP BY clause`; SQLite would have picked an arbitrary row. Per-shot constants
+look redundant in a `GROUP BY` and still have to be listed.
+
+## One query per shot is one round trip per shot
+
+`is_indexed()`, `shot_status()` and the other single-shot helpers each cost one
+HTTP round trip. Over a shot RANGE that is the difference between a second and
+several minutes, and it is the one mistake that has actually made a cell look
+hung:
+
+```python
+unchecked = [s for s in plasma if not is_indexed(s)]   # one request PER SHOT
+```
+
+A span a few thousand shots wide holds a comparable number of plasma shots,
+so that line alone is thousands of sequential requests -- and a script that then calls
+`fetch_estimate(unchecked)` pays for the same walk again. Ask the index once
+instead:
+
+```python
+rows = query_elm_index(
+    "SELECT DISTINCT shot FROM elm_run_shots WHERE shot BETWEEN ? AND ?",
+    (lo, hi))
+indexed = {r["shot"] for r in rows}
+unchecked = [s for s in plasma if s not in indexed]
+```
+
+**This applies to raw SQL exactly as it applies to the helpers.** A loop like
+
+```python
+for s in shots:                                    # one request PER SHOT
+    rows = query_elm_index(
+        "SELECT run_id, status FROM elm_run_shots WHERE shot = ?", (s,))
+```
+
+is the same mistake wearing different clothes -- observed on a 300-shot list,
+where it cost 300 round trips against a single range query that returned the
+same 600 rows in one. Fetch the range once and group in Python:
+
+```python
+rows = query_elm_index(
+    "SELECT shot, run_id, status FROM elm_run_shots"
+    " WHERE shot BETWEEN ? AND ? ORDER BY shot, run_id",
+    (min(shots), max(shots)))
+want = set(shots)
+by_shot = {}
+for r in rows:                                     # no network in this loop
+    if r["shot"] in want:
+        by_shot.setdefault(r["shot"], []).append(r)
+```
+
+Two tells that a loop is about to be expensive: the query text does not change
+between iterations, and the loop variable appears in the parameters. Identical
+repeated queries are served from an in-process memo and cost nothing, but a
+loop with a DIFFERENT shot each time misses that memo on every pass -- it is
+genuinely N requests.
+
+`query_elm_index` accepts a sequence for the common shape, so an explicit list
+needs no range at all:
+
+```python
+rows = query_elm_index(
+    "SELECT shot, run_id, status FROM elm_run_shots WHERE shot IN (?)", (shots,))
+```
+
+`shots_with_signals()` and `fetch_estimate()` are already set-based internally,
+so prefer them over hand-rolled loops. The general rule: **if the question is
+about a range, the query should mention the range.** A per-shot helper answers
+about one shot.
 
 ## Rule 4: report a detector's PARAMETERS, never guess its ALGORITHM
 
@@ -918,7 +1104,7 @@ consequences:
 
 - Grouping by the exact value fragments every nominal rate into two rows.
 - Rounding to the nearest integer merges 0.5 kHz into the 1 kHz bin, because
-  SQLite rounds 0.5 up.
+  half-way values round up.
 
 Bin with an explicit tolerance instead, and **never present a rounded bin
 alongside its own constituents** -- a table listing both "~1 kHz: 256" and

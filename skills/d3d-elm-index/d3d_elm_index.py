@@ -264,17 +264,32 @@ def schema():
         print()
 
 
-def runs():
+_RUNS_CACHE = None
+
+
+def runs(refresh=False):
     """Every detector execution in the index, with its provenance.
 
     A label is meaningless without this: the same detector at a different
     merge time produces a different product. `parameters` is JSON.
+
+    CACHED for the life of the process. This is a handful of rows describing
+    the runs themselves, it does not change while a script is running, and it
+    is read constantly -- `_run_meta`, `_ground_truth_methods`, `label_sets`,
+    `compare_on_shot`, `regime_summary` and the rest all reach for it. Each
+    uncached call was a round trip, so a helper that consulted it once per
+    result row paid for one request per row: `shots_with_multiple_sources`
+    took 13.4 s against SQL that returns in 0.09 s, entirely on repeated
+    `runs()` calls. Pass `refresh=True` after ingesting a new run.
     """
-    return query_elm_index(
-        """SELECT run_id, method, method_version, granularity, parameters,
-                  source_repo, source_commit, signal_candidates, created_at,
-                  is_default, superseded, notes
-           FROM elm_runs ORDER BY run_id""")
+    global _RUNS_CACHE
+    if refresh or _RUNS_CACHE is None:
+        _RUNS_CACHE = query_elm_index(
+            """SELECT run_id, method, method_version, granularity, parameters,
+                      source_repo, source_commit, signal_candidates, created_at,
+                      is_default, superseded, notes
+               FROM elm_runs ORDER BY run_id""")
+    return list(_RUNS_CACHE)
 
 
 # --------------------------------------------------------------------------
@@ -577,6 +592,38 @@ _SEC_PER_SHOT_NO_DATA = 0.65    # below the coverage boundary; a fast tree miss
 _FIRST_SHOT_WITH_FILTERSCOPE = 130882   # located exactly by contiguous scanning
 
 
+def indexed_shots(shots):
+    """Which of `shots` have been through a detector -- ONE query.
+
+    The batch form of `is_indexed()`. Use it for any range or cohort question;
+    `is_indexed()` is for a single shot and costs a round trip each time.
+    """
+    return sorted(_indexed_among(shots))
+
+
+def _indexed_among(shots):
+    """Which of `shots` have been through a detector -- in ONE query.
+
+    `is_indexed()` is a single-shot convenience and costs one HTTP round trip.
+    Calling it per shot over a range is what made a range question take minutes:
+    a 5,000-shot span is ~3,500 plasma shots, and `fetch_estimate` used to walk
+    them one at a time -- then a caller that had ALSO built its unchecked list
+    with `is_indexed()` in a comprehension paid for the walk twice, about 7,000
+    sequential requests. Measured at 19 ms per call from a well-connected host
+    that is over two minutes; from a JupyterHub pod, where per-call latency is
+    several times higher, it is the better part of ten.
+
+    One range query returns the same answer in a single round trip, so the cost
+    no longer grows with the size of the range.
+    """
+    if not shots:
+        return set()
+    rows = query_elm_index(
+        "SELECT DISTINCT shot FROM elm_run_shots WHERE shot BETWEEN ? AND ?",
+        (min(shots), max(shots)))
+    return {r["shot"] for r in rows} & set(shots)
+
+
 def fetch_estimate(shots):
     """Cost of fetching raw filterscope data for `shots`, from measured rates.
 
@@ -592,7 +639,7 @@ def fetch_estimate(shots):
     if isinstance(shots, int):
         shots = [shots]
     shots = sorted(set(shots))
-    already = {s for s in shots if is_indexed(s)}
+    already = _indexed_among(shots)
     todo = [s for s in shots if s not in already]
     # Shots below the coverage boundary almost certainly return nothing, and a
     # miss is cheaper than a hit -- worth saying so rather than over-quoting.
@@ -820,12 +867,22 @@ def _regime_at(windows, t):
     return min(hits, key=lambda w: (w["end_ms"] - w["start_ms"], -w["start_ms"]))
 
 
-def regime_windows(shot, run_id=None):
+_REGIME_WINDOWS_CACHE = {}
+
+
+def regime_windows(shot, run_id=None, refresh=False):
     """Hand-labelled confinement-regime windows for a shot, in ms.
 
     This is ground truth about which regime the plasma was in -- ELMing H-mode
     or one of the quiescent variants -- NOT a list of ELMs.
+
+    CACHED per (shot, run_id) for the life of the process. `regime_at()` reads
+    it on every call, so without this a timeline loop paid one round trip per
+    sampled instant. Pass `refresh=True` after ingesting new labels.
     """
+    key = (shot, run_id)
+    if not refresh and key in _REGIME_WINDOWS_CACHE:
+        return list(_REGIME_WINDOWS_CACHE[key])
     allruns = {r["run_id"]: r for r in runs()}
     if run_id is None:
         cand = [rid for rid, r in allruns.items() if _run_kind(r) == KIND_REGIME]
@@ -847,23 +904,42 @@ def regime_windows(shot, run_id=None):
             f"shot {shot} has no hand-labelled regime windows (run {run_id}). "
             f"Only a few hundred shots were labelled; absence here means "
             f"'nobody labelled it', not 'no regime'.")
-    return [{"start_ms": r["start_time"], "end_ms": r["end_time"],
+    out = [{"start_ms": r["start_time"], "end_ms": r["end_time"],
              "regime": r["label"], "means": means.get(r["label"], "")}
             for r in rows]
+    _REGIME_WINDOWS_CACHE[key] = out
+    return list(out)
+
+
+_UNLABELLED = {
+    "regime": None,
+    "means": "no hand-labelled regime covers this time "
+             "(unlabelled background, which the source documents as L-mode)",
+}
 
 
 def regime_at(shot, time_ms, run_id=None):
-    """Which hand-labelled regime the plasma was in at a moment, if any.
+    """Which hand-labelled regime the plasma was in, at one time OR many.
+
+    Pass a single time for a single answer, or ANY SEQUENCE of times -- a list,
+    a range, an array -- to get a list of answers back, resolved from ONE fetch
+    of the shot's windows.
+
+    Building a timeline is the normal reason to ask this, and the scalar form
+    invited a loop: `for t in range(0, 6001): regime_at(shot, t)` is six
+    thousand round trips, minutes of silence, and a cell that looks hung. Hand
+    the whole timebase over instead:
+
+        timeline = regime_at(shot, range(0, 6001))
 
     Time outside every labelled window returns None with a reason: MODE_INFO
     records L-mode as the unlabelled background, so unlabelled does not mean
     unknown in every case -- but it does mean nobody asserted anything.
     """
-    w = _regime_at(regime_windows(shot, run_id), time_ms)
-    if w:
-        return w
-    return {"regime": None, "means": "no hand-labelled regime covers this time "
-            "(unlabelled background, which the source documents as L-mode)"}
+    wins = regime_windows(shot, run_id)
+    if isinstance(time_ms, (int, float)):
+        return _regime_at(wins, time_ms) or dict(_UNLABELLED)
+    return [(_regime_at(wins, float(t)) or dict(_UNLABELLED)) for t in time_ms]
 
 
 def compare_on_shot(shot, run_ids=None):
@@ -946,6 +1022,123 @@ def compare_on_shot(shot, run_ids=None):
         out["granularity_warning"] = (
             f"event-level runs span granularities {sorted(mixed)}; counts are "
             f"NOT comparable across them")
+    return out
+
+
+def compare_on_shots(shots, run_ids=None, regime_context=True):
+    """compare_on_shot() for a GROUP of shots, in a fixed number of queries.
+
+    Same guards and the same per-shot output as compare_on_shot(), which stays
+    the single-shot form. Use this whenever more than one shot is involved:
+    compare_on_shot() issues roughly three queries per shot, so a loop over a
+    handful of shots is a dozen or more HTTP round trips, and -- the reason
+    this exists -- each shot's comparable window has to be recomputed by the
+    caller, which is easy to get wrong. A window borrowed from the wrong shot
+    silently changes every count clipped to it.
+
+    Returns {shot: <same dict compare_on_shot returns>}. Shots that appear in
+    no run are omitted and listed under the key `None` as "not_indexed", so one
+    unknown shot does not abort the whole comparison.
+    """
+    shots = list(dict.fromkeys(shots))
+    if not shots:
+        return {}
+    meta = {r["run_id"]: r for r in runs()}
+
+    # 1. One query: which runs cover which shots, with each run's own window.
+    sql = ("SELECT run_id, shot, status, error, t_start, t_end "
+           "FROM elm_run_shots WHERE shot IN (?)")
+    params = [shots]
+    if run_ids:
+        sql += " AND run_id IN (?)"
+        params.append(list(run_ids))
+    cover = query_elm_index(sql, tuple(params))
+
+    by_shot = {}
+    for r in cover:
+        by_shot.setdefault(r["shot"], {})[r["run_id"]] = r
+    missing = [s for s in shots if s not in by_shot]
+
+    # 2. Per shot, the comparable window: the intersection of the scoped
+    #    event-level runs, exactly as compare_on_shot computes it.
+    windows, event_runs = {}, {}
+    for shot, rmap in by_shot.items():
+        ev = [rid for rid in rmap if _run_kind(meta[rid]) == KIND_ELM_EVENTS]
+        event_runs[shot] = ev
+        lo = hi = None
+        for rid in ev:
+            row = rmap[rid]
+            if row["t_start"] is not None:
+                lo = row["t_start"] if lo is None else max(lo, row["t_start"])
+                hi = row["t_end"] if hi is None else min(hi, row["t_end"])
+        windows[shot] = (lo, hi)
+
+    # 3. One query for every event label involved; clipping happens here, in
+    #    Python, against each shot's OWN window.
+    wanted = sorted({rid for ev in event_runs.values() for rid in ev})
+    counts = {}
+    if wanted:
+        for r in query_elm_index(
+                "SELECT run_id, shot, start_time, end_time FROM elm_labels "
+                "WHERE shot IN (?) AND run_id IN (?)",
+                (list(by_shot), wanted)):
+            lo, hi = windows.get(r["shot"], (None, None))
+            if lo is not None and (r["end_time"] < lo or r["start_time"] > hi):
+                continue
+            counts[(r["run_id"], r["shot"])] = counts.get((r["run_id"], r["shot"]), 0) + 1
+
+    # 4. One query for regime context, if any regime run covers these shots.
+    regimes = {}
+    reg_runs = sorted({rid for rmap in by_shot.values() for rid in rmap
+                       if _run_kind(meta[rid]) == KIND_REGIME})
+    if regime_context and reg_runs:
+        for r in query_elm_index(
+                "SELECT run_id, shot, label, start_time, end_time FROM elm_labels "
+                "WHERE shot IN (?) AND run_id IN (?) ORDER BY shot, start_time",
+                (list(by_shot), reg_runs)):
+            regimes.setdefault(r["shot"], []).append(
+                {"label": r["label"], "start_ms": r["start_time"],
+                 "end_ms": r["end_time"]})
+
+    out = {}
+    for shot, rmap in by_shot.items():
+        lo, hi = windows[shot]
+        rows = []
+        for rid in event_runs[shot]:
+            m = _run_meta(meta[rid])
+            rows.append({
+                "run_id": rid, "method": meta[rid]["method"],
+                "display_name": m["display_name"],
+                "granularity": meta[rid]["granularity"],
+                "source": "ground truth" if m["is_ground_truth"] else "detector",
+                "n_events_in_window": counts.get((rid, shot), 0),
+                "status": rmap[rid]["status"], "error": rmap[rid]["error"],
+            })
+        entry = {
+            "shot": shot,
+            "comparable_window_ms": None if lo is None else [lo, hi],
+            "event_level": sorted(rows, key=lambda r: r["run_id"]),
+        }
+        if shot in regimes:
+            entry["regime_context"] = regimes[shot]
+            entry["note"] = ("Regime windows are shown as CONTEXT only. They are "
+                             "not counted alongside ELM events -- a regime window "
+                             "is not an ELM.")
+        if any(r["status"] == "error" for r in rows):
+            entry["warning"] = ("At least one detector failed on this shot and "
+                                "produced zero events. Zero-because-it-crashed is "
+                                "not zero-because-it-found-nothing; do not read it "
+                                "as agreement with a ground truth of 0.")
+        gr = {r["granularity"] for r in rows}
+        if len(gr) > 1:
+            entry["granularity_warning"] = (
+                f"event-level runs span granularities {sorted(gr)}; counts are "
+                f"NOT comparable across them")
+        out[shot] = entry
+
+    if missing:
+        out[None] = {"not_indexed": missing,
+                     "note": "these shots appear in no run of this index"}
     return out
 
 
@@ -1158,10 +1351,14 @@ def shots_with_multiple_sources(min_sources=2, require_ground_truth=False, limit
             GROUP BY s.shot
            HAVING COUNT(DISTINCT r.method) >= ?
             ORDER BY n_sources DESC, s.shot""", (min_sources,))
+    # Hoisted: _ground_truth_methods() runs a query, and calling it inside the
+    # loop cost one round trip PER ROW -- 342 rows, 13.4 s, against SQL that
+    # returns in 0.09 s. The whole function was 150x its own query.
+    truth_methods = _ground_truth_methods()
     out = []
     for r in rows:
         methods = sorted(str(r["methods"]).split(","))
-        truth = [m for m in methods if m in _ground_truth_methods()]
+        truth = [m for m in methods if m in truth_methods]
         if require_ground_truth and not truth:
             continue
         out.append({
