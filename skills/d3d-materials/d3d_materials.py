@@ -41,6 +41,20 @@ def _query(sql, params=()):
     return _query_api(sql, params)
 
 
+def working_dir():
+    """The notebook's working folder -- where fetched files belong.
+
+    NOT the current directory. A script may be run from anywhere (`python
+    /abs/path/script.py` leaves the process in the notebook's own folder, one
+    level up), and a file written there is outside the working folder: it gets
+    swept back, re-fetched by the next script, and swept again. Resolving
+    against the exported working folder makes the destination the same no
+    matter how the script was invoked, which is also what lets the local-copy
+    check actually hit.
+    """
+    return os.environ.get("SAGE_OUTPUT_DIR") or os.getcwd()
+
+
 def _as_list(x):
     """Accept a scalar or any iterable of them, uniformly."""
     if x is None:
@@ -302,7 +316,7 @@ def artifacts(sample_names=None, shots=None, kind=None, delivery_id=None):
     says so, and fetching it raises rather than handing back an empty body.
     """
     sql = ["""SELECT a.artifact_id, a.filename, a.kind, a.media_type, a.bytes,
-                     a.notes, a.device, a.shot, a.delivery_id,
+                     a.notes, a.device, a.shot, a.delivery_id, a.metadata,
                      s.name AS sample
                 FROM materials.artifacts a
                 LEFT JOIN materials.samples s USING (sample_key)
@@ -322,6 +336,386 @@ def artifacts(sample_names=None, shots=None, kind=None, delivery_id=None):
     return _query(" ".join(sql), tuple(params))
 
 
+def read_data_file(artifact_id, dest=None, max_rows=None):
+    """Fetch a delivered tabular text file and return (preamble, columns, rows).
+
+    Instrument exports are usually a few lines of free-text preamble, then a
+    header naming the columns, then numbers. Which lines are which differs by
+    provider, so this finds the boundary instead of assuming it: the header is
+    the last non-numeric line before numbers start.
+
+    Returns
+      preamble  list of str   -- the lines before the header, as written
+      columns   list of str   -- the column names, as written
+      rows      numpy array   -- float, shape (n, len(columns))
+
+    Read the preamble. It commonly records what the numbers mean and what units
+    they are in, and neither is recoverable from the numbers themselves.
+
+    If the file is a raster -- one value per (time, position) and similar --
+    pass the result to `as_grid()` before analysing it. Long-format grids
+    punish row-wise filtering badly; see that function.
+    """
+    import numpy as np
+
+    # The working directory, not a temp dir: the notebook agent is confined to
+    # its working folder and may not read files outside it.
+    path = fetch_artifact(artifact_id, dest=dest or working_dir())
+
+    def numeric(line):
+        parts = line.replace(",", " ").split()
+        if not parts:
+            return False
+        try:
+            [float(p) for p in parts]
+            return len(parts) > 1
+        except ValueError:
+            return False
+
+    preamble, columns, rows, header_seen = [], None, [], False
+    with open(path, errors="replace") as fh:
+        prev = None
+        for line in fh:
+            line = line.rstrip("\n")
+            if not header_seen:
+                if numeric(line):
+                    header_seen = True
+                    columns = (prev or "").split("\t")
+                    if len(columns) < 2:
+                        columns = (prev or "").split()
+                    columns = [c.strip() for c in columns if c.strip()]
+                    if preamble and preamble[-1] == prev:
+                        preamble.pop()
+                else:
+                    if prev is not None:
+                        preamble.append(prev)
+                    prev = line
+                    continue
+            if numeric(line):
+                parts = line.replace(",", " ").split()
+                rows.append([float(p) for p in parts])
+                if max_rows and len(rows) >= max_rows:
+                    break
+    arr = np.array(rows) if rows else np.empty((0, 0))
+    if columns and arr.size and arr.shape[1] != len(columns):
+        # A column name containing a space, or a ragged export. Keep the
+        # numbers and say so rather than silently mislabelling them.
+        columns = columns[:arr.shape[1]] + [
+            "col%d" % i for i in range(len(columns), arr.shape[1])]
+    return preamble, columns, arr
+
+
+def as_grid(rows, columns=None):
+    """Recognise a regular grid in a data file, and reshape it.
+
+    Instrument exports are often a raster written long: an outer variable held
+    constant while an inner one sweeps, repeated. `qpeak`-style heat-flux files
+    are one value per (time, position), 1.5 million rows for a few dozen
+    positions across sixty thousand time slices.
+
+    Read long, that shape is a trap. Asking "which rows belong to this time?"
+    with `rows[:, 0] == t` scans every row, and doing it once per time slice is
+    quadratic: on one delivered file that is 94 billion comparisons and about
+    ten minutes, to recover a structure the file's own header states. Reshaped,
+    the same questions are array slices and take milliseconds.
+
+    Returns None when the rows are not a regular grid, otherwise a dict:
+
+        shape    (n_outer, n_inner)
+        outer    index of the column held constant within a block
+        values   {column name: array of shape (n_outer, n_inner)}
+        axes     {column name: 1-D axis} for columns constant along an axis
+
+    Detected from the data, not from the header, so a delivery that labels its
+    dimensions differently -- or not at all -- is handled the same way.
+    """
+    import numpy as np
+
+    if rows is None or getattr(rows, "size", 0) == 0 or rows.ndim != 2:
+        return None
+    n = rows.shape[0]
+
+    # The outer variable is whichever column changes slowest: find the length
+    # of the first run of equal values in each column.
+    best = None
+    for c in range(rows.shape[1]):
+        col = rows[:, c]
+        changes = np.flatnonzero(col[1:] != col[:-1])
+        if changes.size == 0:
+            continue                       # constant throughout -- not an axis
+        block = int(changes[0]) + 1
+        if block < 2 or block >= n or n % block:
+            continue
+        if best is None or block > best[1]:
+            best = (c, block)
+    if best is None:
+        return None
+    outer, inner = best[0], best[1]
+    n_outer = n // inner
+
+    # Every block must be the same size, and the inner sweep must repeat.
+    oc = rows[:, outer].reshape(n_outer, inner)
+    if not np.all(oc == oc[:, :1]):
+        return None
+    inner_cols = [c for c in range(rows.shape[1]) if c != outer]
+    fast = None
+    for c in inner_cols:
+        g = rows[:, c].reshape(n_outer, inner)
+        if np.allclose(g, g[:1], equal_nan=True):
+            fast = c
+            break
+    if fast is None:
+        return None                        # no repeating inner sweep: not a grid
+
+    names = list(columns) if columns else ["col%d" % i for i in range(rows.shape[1])]
+    out = {"shape": (n_outer, inner), "outer": names[outer], "inner": names[fast],
+           "values": {}, "axes": {}}
+    for c in range(rows.shape[1]):
+        g = rows[:, c].reshape(n_outer, inner)
+        out["values"][names[c]] = g
+    out["axes"][names[outer]] = rows[:, outer].reshape(n_outer, inner)[:, 0]
+    out["axes"][names[fast]] = rows[:, fast].reshape(n_outer, inner)[0]
+    return out
+
+
+def image_metadata(artifact_id):
+    """Acquisition settings for one image, as recorded in the catalogue.
+
+    Read from the catalogue, not downloaded: the settings were parsed when the
+    delivery was catalogued, so asking for them across a whole set of images
+    costs one query instead of one download each. Returns {} when the provider
+    shipped no companion metadata for that file.
+    """
+    rows = _query("SELECT metadata FROM materials.artifacts WHERE artifact_id = ?",
+                  (artifact_id,))
+    return (rows[0]["metadata"] or {}) if rows else {}
+
+
+def image_artifacts(sample_names=None, delivery_id=None, drop_near_duplicates=True):
+    """Image files for a GROUP of samples, with their acquisition metadata.
+
+    Deliveries often contain near-duplicate captures -- the same field at the
+    same settings, saved seconds apart. Showing both says nothing twice, so by
+    default one of each such pair is dropped: images whose companion metadata
+    is identical except for a time-valued field are treated as the same
+    picture. Pass drop_near_duplicates=False to see everything.
+    """
+    rows = [a for a in artifacts(sample_names=sample_names, delivery_id=delivery_id)
+            if (a["media_type"] or "").startswith("image/")]
+    for a in rows:
+        a["metadata"] = a.get("metadata") or {}
+    if not drop_near_duplicates:
+        return rows
+    seen, keep = {}, []
+    for a in sorted(rows, key=lambda r: r["filename"]):
+        sig = tuple(sorted((k, v) for k, v in a["metadata"].items()
+                           if "TIME" not in k.upper() and "DATE" not in k.upper()))
+        if not sig:
+            keep.append(a)
+            continue
+        if sig in seen:
+            continue
+        seen[sig] = a
+        keep.append(a)
+    return keep
+
+
+def load_image(artifact_id, dest=None):
+    """Fetch one image and return it as a PIL Image, ready to display."""
+    from PIL import Image
+    return Image.open(fetch_artifact(artifact_id, dest=dest or working_dir()))
+
+
+def show_images(artifact_ids, labels=None, ncols=3, width=4.2, title=None):
+    """Display images side by side, for comparing samples.
+
+    Comparing pictures taken at different magnifications shows a difference
+    that is only zoom, so when the acquisition metadata records a magnification
+    this raises rather than drawing a misleading figure. Pick one magnification
+    and pass images from it.
+    """
+    import matplotlib.pyplot as plt
+    ids = _as_list(artifact_ids)
+    mags = set()
+    metas = {a["artifact_id"]: (a["metadata"] or {})
+             for a in _query("SELECT artifact_id, metadata FROM materials.artifacts "
+                             "WHERE artifact_id IN (?)", (ids,))}
+    for aid in ids:
+        m = metas.get(aid, {})
+        for key in m:
+            if key.upper().endswith("MAG"):
+                mags.add(m[key])
+    if len(mags) > 1:
+        raise ValueError(
+            "these images were taken at different magnifications (%s); a "
+            "side-by-side comparison of them shows zoom, not a difference in "
+            "the samples. Choose one magnification."
+            % ", ".join(sorted(mags)))
+    n = len(ids)
+    ncols = min(ncols, n)
+    nrows = (n + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(width * ncols, width * nrows * 0.85))
+    axes = [axes] if n == 1 else list(axes.ravel())
+    for ax, aid in zip(axes, ids):
+        ax.imshow(load_image(aid), cmap="gray")
+        ax.set_xticks([]); ax.set_yticks([])
+    if labels:
+        for ax, lab in zip(axes, _as_list(labels)):
+            ax.set_title(lab, fontsize=10)
+    for ax in axes[n:]:
+        ax.axis("off")
+    if title:
+        mag = mags.pop() if mags else None
+        if mag and mag.isdigit():
+            mag = "{:,}x".format(int(mag))
+        fig.suptitle(title + (" -- %s" % mag if mag else ""), fontsize=11)
+    fig.tight_layout()
+    return fig
+
+
+_ARTIFACT_FACTS = {}
+
+
+def _artifact_facts(artifact_id):
+    """(filename, bytes) for one artifact, cached for the process.
+
+    The catalogue is the authority on what a complete copy looks like, and it
+    cannot change while a script runs.
+    """
+    if artifact_id not in _ARTIFACT_FACTS:
+        rows = _query("SELECT filename, bytes FROM materials.artifacts "
+                      "WHERE artifact_id = ?", (artifact_id,))
+        _ARTIFACT_FACTS[artifact_id] = (
+            (rows[0]["filename"], rows[0]["bytes"]) if rows else (None, None))
+    return _ARTIFACT_FACTS[artifact_id]
+
+
+def _expected_filename(artifact_id):
+    return _artifact_facts(artifact_id)[0]
+
+
+def _expected_size(artifact_id):
+    return _artifact_facts(artifact_id)[1]
+
+
+_DOC_TEXT = {}
+
+# Media types whose text can be extracted. Anything else is data, not prose.
+_READABLE = ("text/", "application/pdf", "spreadsheet", "wordprocessing")
+
+
+def documents(delivery_id=None, kind=None):
+    """The delivery's readable documents -- reports, spreadsheets, datasheets.
+
+    A delivery carries prose alongside its data: an exposure log, a summary
+    workbook, a proposal. These record the things the tables cannot -- how an
+    instrument was configured, what a column means, why a shot is missing.
+    """
+    rows = artifacts(delivery_id=delivery_id, kind=kind)
+    # A text file that accompanies an image is that image's acquisition record,
+    # already parsed into the catalogue -- not a document about the delivery.
+    # Excluding them keeps this list to what a person would call a document,
+    # and keeps a search over it fast.
+    companions = set()
+    for a in rows:
+        if (a["media_type"] or "").startswith("image/"):
+            companions.add((a.get("kind"), a["filename"].rsplit(".", 1)[0]))
+    out = [a for a in rows
+           if any(t in (a["media_type"] or "") for t in _READABLE)
+           and (a.get("kind"), a["filename"].rsplit(".", 1)[0]) not in companions]
+    return sorted(out, key=lambda a: (a["kind"] or "", a["filename"]))
+
+
+def document_text(artifact_id):
+    """Extract a document's text. Cached for the process."""
+    if artifact_id in _DOC_TEXT:
+        return _DOC_TEXT[artifact_id]
+    rows = _query("SELECT filename, media_type FROM materials.artifacts "
+                  "WHERE artifact_id = ?", (artifact_id,))
+    if not rows:
+        raise LookupError("no such artifact: %s" % artifact_id)
+    mt = rows[0]["media_type"] or ""
+    path = fetch_artifact(artifact_id)
+    out = []
+    try:
+        if "pdf" in mt:
+            from pypdf import PdfReader
+            for i, page in enumerate(PdfReader(path).pages, 1):
+                out.append("[page %d] %s" % (i, page.extract_text() or ""))
+        elif "spreadsheet" in mt:
+            import openpyxl
+            wb = openpyxl.load_workbook(path, data_only=True)
+            for ws in wb.worksheets:
+                for r, row in enumerate(ws.iter_rows(values_only=True), 1):
+                    cells = [str(c) for c in row if c is not None]
+                    if cells:
+                        out.append("[%s r%d] %s" % (ws.title, r, "\t".join(cells)))
+        elif "wordprocessing" in mt:
+            import docx
+            d = docx.Document(path)
+            for p in d.paragraphs:
+                if p.text.strip():
+                    out.append(p.text)
+            for t in d.tables:
+                for row in t.rows:
+                    cells = [c.text.strip() for c in row.cells if c.text.strip()]
+                    if cells:
+                        out.append("\t".join(cells))
+        else:
+            out.append(open(path, errors="replace").read())
+    except ImportError as e:
+        raise RuntimeError(
+            "cannot read %s: %s. The reader for this format is missing."
+            % (rows[0]["filename"], e)) from None
+    _DOC_TEXT[artifact_id] = "\n".join(out)
+    return _DOC_TEXT[artifact_id]
+
+
+def find_in_documents(pattern, delivery_id=None, context=90, max_hits=40,
+                      ignore_case=True):
+    """Search EVERY document in the delivery for a pattern, in one call.
+
+    Answers "does this delivery say anything about X, and where?" -- the
+    question that otherwise costs one script per file and per format.
+    Spreadsheets, PDFs, Word documents and plain text are all searched; the
+    caller does not need to know which format holds the answer.
+
+    Returns hits as {filename, kind, artifact_id, line, text}, so a promising
+    hit can be followed up with `document_text()` for full context.
+
+    Searching for a unit, an instrument name or a column heading is usually
+    more productive than searching for a number, since numbers are often
+    formatted differently in prose than in a table.
+    """
+    import re as _re
+    flags = _re.IGNORECASE if ignore_case else 0
+    try:
+        rx = _re.compile(pattern, flags)
+    except _re.error as e:
+        raise ValueError("bad search pattern %r: %s" % (pattern, e)) from None
+
+    hits = []
+    for a in documents(delivery_id=delivery_id):
+        try:
+            text = document_text(a["artifact_id"])
+        except Exception as e:                                   # noqa: BLE001
+            hits.append({"filename": a["filename"], "kind": a["kind"],
+                         "artifact_id": a["artifact_id"], "line": None,
+                         "text": "<unreadable: %s>" % e})
+            continue
+        for n, line in enumerate(text.splitlines(), 1):
+            m = rx.search(line)
+            if not m:
+                continue
+            lo = max(0, m.start() - context // 2)
+            hits.append({"filename": a["filename"], "kind": a["kind"],
+                         "artifact_id": a["artifact_id"], "line": n,
+                         "text": line[lo:lo + context].strip()})
+            if len(hits) >= max_hits:
+                return hits
+    return hits
+
+
 def fetch_artifact(artifact_id, dest=None):
     """Download one catalogued file. Returns the path it was written to.
 
@@ -335,6 +729,24 @@ def fetch_artifact(artifact_id, dest=None):
     # endpoint() already carries the /FEDER prefix -- the same base the query
     # calls are built on. Appending it again yields /FEDER/FEDER and a 404 that
     # reads as a missing artifact rather than a wrong URL.
+    # Already here? Do not fetch it again.
+    #
+    # An artifact is immutable -- its id is derived from its content path, and
+    # a changed file is a new id -- so a local copy of the right size IS the
+    # artifact. Re-downloading one costs a transfer and, worse, a write: on a
+    # notebook whose working folder is network-backed, repeatedly rewriting
+    # hundreds of megabytes puts a blocking filesystem write on the critical
+    # path of every analysis. Several scripts in one session each re-pulling
+    # the same files is the normal pattern, so this is the common case.
+    dest = dest or working_dir()
+    want = _expected_size(artifact_id)
+    if dest:
+        cached = dest if os.path.isfile(dest) else os.path.join(
+            dest, _expected_filename(artifact_id) or "")
+        if (want and os.path.isfile(cached)
+                and os.path.getsize(cached) == want):
+            return cached
+
     url = "%s/materials/artifact/%s" % (_endpoint(), artifact_id)
     headers = {}
     tok = _token()

@@ -83,6 +83,24 @@ The shots are plain numbers and go straight into the shot-fetching, disruption
 and ELM skills. Use `samples_for_shots()` to ask whether anything was exposed
 during a set of shots; shots with no sample are simply absent from the result.
 
+That bridge is what makes a sample record checkable. Conditions the
+experimenters wrote down were derived from measurements, and the same
+quantities are often available a second way — in the delivered instrument
+files, or in the tokamak archive for the same shots. Rebuilding one from the
+other is usually possible and always worth stating:
+
+- a recorded plasma condition against the instrument export it came from;
+- a quantity in arbitrary units against a calibrated archive signal, comparing
+  a **ratio**, which is dimensionless, rather than the values themselves;
+- a regime or event the record asserts against what the archive's own indexes
+  say about those shots.
+
+Where the two agree, both are supported. Where they disagree, establish whether
+they are describing the same thing — the same position, the same time window,
+the same population — before calling it a contradiction. A sample sees one
+location for part of a discharge; a shot-level record describes the whole of
+it.
+
 ## Files
 
 Images, camera files, drawings and datasheets are catalogued in
@@ -100,6 +118,194 @@ back from `artifacts()` rather than assuming them. A row whose `bytes` is 0
 arrived empty; `notes` records that, and fetching it raises
 `ArtifactUnavailable` rather than returning an empty file. That is a fact about
 the delivery, not a fault to work around.
+
+## The delivered files are measurements, not an appendix
+
+`materials.observations` holds values somebody derived. The files hold what
+they derived them from: micrographs of the surfaces, instrument exports of the
+plasma conditions, analysis spreadsheets. A question about what a surface looks
+like, or about how a recorded number was arrived at, is answered from the files
+and cannot be answered from the tables.
+
+`artifacts()` lists them; `kind` and `media_type` say what each one is. Read
+those back rather than assuming — they follow how the provider organised the
+delivery.
+
+### Images
+
+```python
+imgs = mat.image_artifacts(names)          # one request; near-duplicates dropped
+a = imgs[0]
+a["metadata"]                              # acquisition settings, if the
+                                           # provider shipped a companion file
+```
+
+Images frequently arrive with a small companion text file recording how they
+were acquired — instrument, accelerating voltage, magnification, and often a
+scale calibration in pixels per unit length. `image_metadata()` parses it into
+a dict; the keys are whatever the instrument wrote. That calibration is what
+makes an image measurable rather than merely viewable, so read it before
+quoting any size from a picture.
+
+Two failure modes, both of which produce a figure that looks fine:
+
+- **Near-duplicate captures.** The same field at the same settings, saved
+  seconds apart, appears as two files. `image_artifacts()` drops one of each
+  such pair by comparing companion metadata; pass
+  `drop_near_duplicates=False` to see everything.
+- **Mixed magnification.** Two images at different magnifications differ
+  visibly, but the difference is zoom. `show_images()` refuses rather than
+  drawing it. Select one magnification first:
+
+```python
+mag = "50000"                              # a value seen in the metadata above
+pick, seen = [], set()
+for a in imgs:                             # already fetched -- do not re-query
+    if a["metadata"].get("CM_MAG") == mag and a["sample"] not in seen:
+        seen.add(a["sample"])
+        pick.append(a)                     # one image per sample, same settings
+mat.show_images([a["artifact_id"] for a in pick],
+                labels=[a["sample"] for a in pick],
+                title="surface comparison")
+```
+
+Take one image per sample. Slicing the first few matches off the list instead
+returns several views of whichever sample sorts first, and the figure looks
+like a comparison while showing none.
+
+Check which lifecycle stage an image documents before describing it. An image
+filed under a pre-exposure stage records the state going **into** the exposure,
+and saying otherwise inverts the experiment.
+
+### Finding what the delivery says
+
+**Recorded values are already in the tables.** The numbers in a delivered
+spreadsheet were parsed into `observations` when the delivery was loaded, so
+`observations(...)` answers "what was measured" without opening a file. Go to
+the documents for what the tables cannot hold: how an instrument was
+configured, what a column means, why something is missing.
+
+`find_in_documents()` searches every document in the delivery at once --
+spreadsheets, PDFs, Word files and plain text -- so you need not know which
+format holds the answer, nor open them one at a time:
+
+```python
+for h in mat.find_in_documents("fast.cam|frame rate"):
+    print("%-34s L%-5s %s" % (h["filename"], h["line"], h["text"]))
+```
+
+```
+Data Availability Sheet.xlsx       L7    ... L/H  Heat flux  FASTCAM  SEM ...
+MP_W_erosion_retention_2020_v9.pdf L169  UCSD fast camera will also be used ...
+MP_W_erosion_retention_2020_v9.pdf L174  ... resolution to resolve intra-ELM ...
+```
+
+`documents()` lists what will be searched; `document_text()` returns one
+document in full once a hit looks worth following.
+
+**A search returning nothing is a result.** If a configuration detail is not in
+any document, it is not recoverable, and an analysis that depends on it should
+say so rather than assume a value. Establishing that costs one call — report
+the absence, do not keep hunting file by file.
+
+Search for a unit, an instrument name or a column heading rather than a number:
+numbers are formatted differently in prose than in tables, so a numeric search
+misses hits that a name would find.
+
+### Making a figure appear
+
+Saving a figure does not show it. A script run as a subprocess -- which is how
+analysis scripts here are run -- has no connection to the notebook's display,
+so `plt.show()` in one does nothing at all. The figure lands on disk and the
+reader never sees it.
+
+**Save it into the working folder, then reference it from the final answer:**
+
+```python
+fig.savefig("retention_by_method.png", bbox_inches="tight")   # in the script
+```
+
+then, in the answer text itself:
+
+```
+![Deuterium retention by method](retention_by_method.png)
+```
+
+The reference is resolved against the working folder when the answer is
+rendered, so a bare filename is right -- no directory, no absolute path. Every
+figure worth making is worth referencing; one that is saved but never
+referenced is invisible, which is indistinguishable from never having made it.
+
+Only code running directly in the notebook kernel can use `plt.show()` or
+`display(...)`. When in doubt, save and reference -- that works either way.
+
+Fetched files land in the working folder by default, which is the only place
+readable from here. Pass `dest=` only to choose a subfolder of it.
+
+A file already present is not fetched again: an artifact is immutable, so a
+complete local copy is the artifact. Re-running an analysis costs nothing, and
+the same file used by five scripts is transferred once.
+
+### Instrument data files
+
+```python
+preamble, columns, rows = mat.read_data_file(artifact_id)
+```
+
+Returns the free-text preamble, the column names as written, and a float array.
+The layout is discovered, not assumed, so a new provider's export reads the
+same way.
+
+**Read the preamble.** It routinely records what the numbers are and what units
+they are in, and neither is recoverable from the numbers. Column names
+generally carry their own units — use them rather than guessing, and convert
+explicitly when comparing against a value recorded in the database, which may
+be in different ones.
+
+**Check for a grid before filtering row by row.** Many instrument exports are a
+raster written long: an outer variable held constant while an inner one sweeps,
+repeated. Hand the parsed rows to `as_grid()`, which detects that from the data
+and reshapes it:
+
+```python
+preamble, columns, rows = mat.read_data_file(artifact_id)
+g = mat.as_grid(rows, columns)
+if g:
+    q = g["values"]["q (W cm^-2)"]        # shape (n_outer, n_inner)
+    t = g["axes"]["Time (ms)"]            # the outer axis
+    R = g["axes"]["R (cm)"]               # the inner axis
+    window = q[(t >= t0) & (t <= t1)]     # a slice, not a scan
+```
+
+It returns None when the rows are not a grid, so it is safe to try.
+
+This matters more than it looks. Selecting rows with `rows[:, 0] == value`
+scans the whole file, so doing it once per distinct value is quadratic in the
+file's size -- minutes of work, per file, to recover a structure the header
+usually states outright. Reshaped, the same questions are array slices and take
+milliseconds. **If a loop is about to run once per timestep, stop and reshape
+instead.** The cost is invisible while it happens: output is buffered, so a
+script doing this looks hung rather than slow.
+
+**An average over a whole file usually answers a different question from the
+one a recorded value answers.** Instrument exports are resolved in time and
+often in space. A sample occupies one position and is exposed during part of a
+discharge, so a recorded condition describes that position and that interval,
+not the whole array over the whole shot. Averaging everything can be wrong by a
+large factor while looking entirely reasonable. Find the restriction first — the
+exposure record and the file preamble say where and when — then average:
+
+```python
+import numpy as np
+i_t = columns.index("time(msec)")           # names as the provider wrote them
+t   = rows[:, i_t]
+sel = (t >= t_start) & (t <= t_end)         # the exposure window
+# ... and restrict in space to where the sample actually sat
+```
+
+When a rebuilt value is compared against a recorded one, state the window and
+the restriction used. Agreement means little if the reader cannot see what was
+averaged.
 
 ## Raw SQL
 
