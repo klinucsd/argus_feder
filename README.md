@@ -200,6 +200,45 @@ the disruption label is defined.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_research_jupyterhub.ipynb)
 
+## Plasma-facing materials
+
+### Tungsten in the divertor: what the plasma did to it
+
+Tungsten armours the DIII-D divertor and is the leading candidate for ITER. Two
+things happen to it in a fusion device, and they interact: helium restructures the
+surface, and deuterium fuel implants into that surface and is retained there. How
+much the wall holds, and what governs it, is a safety and economics question for a
+reactor — so whether the first of those changes the second matters.
+
+Tungsten samples were built to answer it: some pre-exposed to helium plasma in a
+linear device, some not, then mounted on DiMES and exposed to real DIII-D
+discharges before being analysed by ion-beam and laser methods. The notebook works
+across the sample record and the discharge archive together, joined by the shot
+numbers each exposure carries.
+
+Several questions take a condition the experimenters wrote down and rebuild it from
+the raw measurements it came from — electron temperature and density at the sample
+from the divertor probe files, the average heat flux from the infrared camera
+exports, and the fast camera's intra- to inter-ELM brightness ratio from the
+archive's own D-alpha filterscope. Two of the three reproduce the record only under
+a restriction that has to be found first: a probe array spans the whole divertor
+while the sample occupies one radius, and an average over a detector's ELM window
+is not the same quantity as a camera's reading at the ELM peak.
+
+Where the two sources disagree, the notebook settles it rather than reporting it.
+The exposure log records L-mode for one campaign while the ELM index labels every
+one of those discharges ELMy; burst amplitude, the D-alpha power spectrum, and beam
+power from an unrelated diagnostic all support the log.
+
+The closing question separates what the record establishes from what it is only
+consistent with, and says what it cannot address at all: confinement regime is
+confounded with temperature, density and heat flux across two campaigns, surface
+temperature was never measured, no post-exposure micrographs were delivered, and
+the samples labelled pristine turn out to contain helium — which contaminates the
+comparison the experiment was built for.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_d3d_jupyterhub.ipynb)
+
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
