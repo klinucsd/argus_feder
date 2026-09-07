@@ -33,6 +33,7 @@ lookup order so both databases are found the same way:
   5. /content/                                          (Colab -- upload via file browser)
 """
 import json
+import json as _json
 import os
 import sys
 
@@ -940,6 +941,124 @@ def regime_at(shot, time_ms, run_id=None):
     if isinstance(time_ms, (int, float)):
         return _regime_at(wins, time_ms) or dict(_UNLABELLED)
     return [(_regime_at(wins, float(t)) or dict(_UNLABELLED)) for t in time_ms]
+
+
+def event_contrast(times, values, shot, run_id=None, t_start=None, t_end=None,
+                   statistic="mean", trims=(0.0,), peak_ms=None):
+    """Compare a signal INSIDE stored event windows against BETWEEN them.
+
+    The generic form of "how much stronger was this quantity during events?".
+    Works for any time series and any burst run -- the signal is whatever you
+    fetched, the windows are whatever the index stores.
+
+    times, values   arrays of the same length; times in ms
+    trims           ms to remove from EACH end of every window before
+                    splitting. The run's own recorded padding is always added
+                    to this list, so the padded and unpadded answers appear
+                    side by side without asking.
+    peak_ms         if given, also report the statistic over the brightest
+                    `peak_ms` of each window -- the "at the event's peak"
+                    answer as distinct from the "averaged over the event" one.
+
+    Returns one dict per variant, each with intra, inter, ratio, counts, the
+    mean window width and the duty cycle. Read the ratios ACROSS variants
+    before quoting one: a quantity averaged over a window inherits the
+    window's width, so a ratio that climbs steeply as the window narrows is
+    telling you the window is wider than the feature, not that the signal
+    changed. See "A burst window is a detector's interval" above.
+    """
+    import numpy as np
+
+    t = np.asarray(times, dtype=float)
+    v = np.asarray(values, dtype=float)
+    if t.shape != v.shape or t.size == 0:
+        raise ValueError("times and values must be the same non-empty length")
+    order = np.argsort(t)
+    t, v = t[order], v[order]
+
+    lo = t[0] if t_start is None else float(t_start)
+    hi = t[-1] if t_end is None else float(t_end)
+    span = (t >= lo) & (t <= hi)
+    t, v = t[span], v[span]
+    if t.size == 0:
+        raise ValueError("no samples inside [t_start, t_end]")
+
+    rid = run_id if run_id is not None else _default_run("burst")
+    windows = [(w["start_time"], w["end_time"])
+               for w in elm_bursts(shot, t_start=lo, t_end=hi, run_id=rid)]
+    if not windows:
+        raise ShotNotIndexed(
+            f"run {rid} stores no events for shot {shot} in [{lo}, {hi}] ms")
+
+    # The run's own padding, so the "detector added this" variant is offered
+    # without the caller having to know the parameter exists.
+    pad = 0.0
+    try:
+        meta = {r["run_id"]: r for r in runs()}
+        params = _json.loads(meta[rid]["parameters"])
+        pad = float(params.get("start_padding") or 0.0)
+    except Exception:                                            # noqa: BLE001
+        pad = 0.0
+    wanted = list(dict.fromkeys(list(trims) + ([pad] if pad else [])))
+
+    def _stat(a):
+        if a.size == 0:
+            return float("nan")
+        return float(np.median(a)) if statistic == "median" else float(a.mean())
+
+    out = []
+    for trim in wanted:
+        inside = np.zeros(t.size, dtype=bool)
+        widths = []
+        for a, b in windows:
+            a2, b2 = a + trim, b - trim
+            if b2 <= a2:
+                continue
+            widths.append(b2 - a2)
+            i, j = np.searchsorted(t, a2, "left"), np.searchsorted(t, b2, "right")
+            inside[i:j] = True
+        if not widths or not inside.any() or inside.all():
+            continue
+        intra, inter = _stat(v[inside]), _stat(v[~inside])
+        out.append({
+            "variant": "full window" if trim == 0 else f"trimmed {trim:g} ms/end",
+            "trim_ms": trim, "intra": intra, "inter": inter,
+            "ratio": intra / inter if inter else float("nan"),
+            "n_intra": int(inside.sum()), "n_inter": int((~inside).sum()),
+            "window_ms": float(np.mean(widths)),
+            "duty": float(inside.sum()) / t.size,
+            "n_windows": len(widths), "run_id": rid,
+        })
+
+    if peak_ms:
+        # The brightest peak_ms of each window, pooled -- "at the peak" rather
+        # than "averaged over the event".
+        picks = []
+        for a, b in windows:
+            i, j = np.searchsorted(t, a, "left"), np.searchsorted(t, b, "right")
+            if j - i < 2:
+                continue
+            seg = v[i:j]
+            k = max(1, int(round(peak_ms / max(np.median(np.diff(t[i:j])), 1e-9))))
+            picks.append(np.sort(seg)[-k:])
+        if picks:
+            inside = np.zeros(t.size, dtype=bool)
+            for a, b in windows:
+                i, j = np.searchsorted(t, a, "left"), np.searchsorted(t, b, "right")
+                inside[i:j] = True
+            intra = _stat(np.concatenate(picks))
+            inter = _stat(v[~inside])
+            out.append({
+                "variant": f"peak {peak_ms:g} ms of each window",
+                "trim_ms": None, "intra": intra, "inter": inter,
+                "ratio": intra / inter if inter else float("nan"),
+                "n_intra": int(sum(p.size for p in picks)),
+                "n_inter": int((~inside).sum()),
+                "window_ms": peak_ms,
+                "duty": float(sum(p.size for p in picks)) / t.size,
+                "n_windows": len(picks), "run_id": rid,
+            })
+    return out
 
 
 def compare_on_shot(shot, run_ids=None):

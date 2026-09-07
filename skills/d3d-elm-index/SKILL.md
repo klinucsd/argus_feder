@@ -60,7 +60,8 @@ from d3d_elm_index import (
     signal_availability, shots_with_signals, coverage_summary,
     compare_runs, fetch_estimate, locate_elm_db, ShotNotIndexed,
     # ground truth and cross-method comparison -- rules 9, 9b, 10
-    label_sets, regime_windows, regime_at, compare_on_shot, plot_comparison,
+    label_sets, regime_windows, regime_at, compare_on_shot, compare_on_shots,
+    event_contrast, plot_comparison,
     shots_with_multiple_sources, firing_rate_by_regime, events_by_regime,
     regime_summary, elm_phase_at, select_by_elm_phase,
 )
@@ -654,6 +655,88 @@ shot's window separately; a hand-rolled comparison that reuses one shot's
 window for another, or that derives a window from the span of the labels
 instead of the recorded window, returns counts that look reasonable and are
 wrong. Let the helper compute the window.
+
+## Comparing a signal during events against between them
+
+"How much stronger was this quantity during the events?" is a question about
+any time series, not one particular signal. `event_contrast()` answers it:
+give it a fetched trace and a shot, and it splits the samples by the stored
+windows and reports the statistic inside, outside, and their ratio.
+
+It returns SEVERAL variants, not one number, because the answer depends on how
+much of the window you count as the event -- and that is a property of the
+detector, not of the physics:
+
+```python
+from d3d_elm_index import event_contrast
+
+rows = event_contrast(times, values, shot=185258,
+                      t_start=2500, t_end=5000,      # the flat-top
+                      peak_ms=1.0)                   # also report "at the peak"
+for r in rows:
+    print("%-26s ratio=%.2f  window=%.2f ms  duty=%.2f"
+          % (r["variant"], r["ratio"], r["window_ms"], r["duty"]))
+```
+
+```
+full window                ratio=1.72  window=4.54 ms  duty=0.42
+trimmed 1 ms/end           ratio=2.11  window=2.54 ms  duty=0.23
+peak 1 ms of each window   ratio=3.22  window=1.00 ms  duty=0.09
+```
+
+The run's own recorded padding is trimmed automatically as one of the variants,
+so the padded and unpadded answers appear side by side without your having to
+know the parameter exists.
+
+**Read across the variants before quoting one.** A ratio that climbs steeply as
+the window narrows -- as it does above, 1.7 to 3.2 -- means the window is wider
+than the feature, so a window average is diluted toward the between-event
+level. A ratio that is flat across the variants means the window width is not
+the story and the number is robust.
+
+**Which variant to quote depends on the question.** "How much brighter,
+averaged over the whole event?" is the full window. "How much brighter at the
+peak?" is `peak_ms`. If you are comparing against a measurement from another
+instrument, the two must be averaging over comparable spans, or they are
+answering different questions and will disagree for reasons that have nothing
+to do with the physics.
+
+**Check the per-shot spread, not just the pooled mean.** Run it per shot and
+compare: a pooled mean that lands on a target while the per-shot values scatter
+far more widely than the target's own spread has not reproduced anything.
+
+## A burst window is a detector's interval, not the event's duration
+
+A stored window says "the detector marked this span". Its width comes from the
+detector's own settings -- thresholds, smoothing, a merge time, and any padding
+added at each end -- all of which are recorded in the run's `parameters`. Read
+them before treating a width as physical:
+
+```python
+import json
+meta = {r["run_id"]: r for r in runs()}      # never index runs() by position
+params = json.loads(meta[run_id]["parameters"])
+# look for padding, merge time, filter width
+```
+
+**Anything averaged over a window inherits that width.** If the window is wider
+than the feature -- padding alone guarantees some of this -- an average over it
+is diluted toward the between-event level, and the wider the window the closer
+the ratio drifts to 1. A quantity measured *during* events and compared against
+an independent instrument is especially exposed, because the two are then
+averaging over different spans.
+
+When such a comparison disagrees, the window width is a hypothesis you can
+TEST rather than argue about. It predicts something specific: restrict each
+window to its highest-signal core, or trim the recorded padding, and recompute.
+If the disagreement closes as the window narrows, the width explains it. If the
+ratio is flat as the window narrows, it does not, and the difference is real.
+
+Two-level dilution arithmetic makes the size of the effect explicit: if a
+fraction `f` of a window is the genuine event and the rest sits at the baseline,
+then `measured = f * true + (1 - f)`. Solving for `f` turns a disagreement into
+a statement about how much of the window is real, which can be checked against
+the physical duration the events are expected to have.
 
 ## The database is PostgreSQL -- what that changes
 
