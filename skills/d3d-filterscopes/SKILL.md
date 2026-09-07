@@ -124,6 +124,52 @@ else:
     print(f"samples={data.size}  rate={1/dt:.2f} kHz  span={times[-1]-times[0]:.1f} ms")
 ```
 
+## Fetching is the expensive step -- do it once
+
+A filterscope trace is hundreds of thousands of samples pulled from a remote
+server. It is, by a wide margin, the slowest thing in an analysis, and nothing
+caches it for you: a second script that fetches the same trace pays the same
+cost again.
+
+**Fetch once, save, and reload.** A session that fetches in one script and
+reloads in the rest turns minutes of waiting into milliseconds:
+
+```python
+import os
+import numpy as np
+
+CACHE = "traces.npz"
+if os.path.exists(CACHE):
+    z = np.load(CACHE)
+    traces = {k: z[k] for k in z.files}
+else:
+    ...                                    # fetch here, once
+    np.savez(CACHE, **traces)
+```
+
+**One fetch per signal, not one per shot.** A Pipeline fetches every registered
+signal for every record, so registering a differently-named signal per shot
+multiplies the work by the number of shots and throws most of it away:
+
+```python
+p = Pipeline(shots)
+for s in shots:                            # WRONG -- len(shots)^2 fetches
+    p.fetch(f"da_{s}", MdsSignal(...))
+
+p = Pipeline(shots)
+p.fetch("da", MdsSignal(...))              # right -- one per shot, once
+```
+
+**Ask several questions per script.** Each script you run is a round trip, and
+a long analysis spends more time in round trips than in computation. Once a
+trace is in memory, sweeping a parameter, trying a second statistic and
+checking a cross-channel comparison all belong in the same script rather than
+three. Write the script that answers the question AND the obvious follow-ups.
+
+**Look before fetching.** Files already in the working folder were fetched by
+an earlier step of the same session; list the folder before deciding to fetch
+anything.
+
 ## Checking which shots have a filterscope signal archived
 
 To answer "across a shot range, which shots have `\fs04` (or another filterscope

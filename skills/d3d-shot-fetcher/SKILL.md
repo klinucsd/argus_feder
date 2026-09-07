@@ -10,6 +10,36 @@ metadata:
 
 # DIII-D Shot Data Fetcher Skill
 
+## Does this signal exist? Ask the catalogue, not the tree
+
+Before opening a tree or fetching anything, check whether the pointname exists
+at all. `find_signals()` searches the catalogue of every archived signal in one
+query -- no MDSplus connection, no shot required:
+
+```python
+from d3d_ptdata import find_signals
+
+find_signals("FS%DA")            # the D-alpha filterscope channels
+find_signals("D2")               # anything with D2 in the name
+find_signals("IP", tree="EFIT01")
+```
+
+**An empty result is an answer.** If nothing matches, the archive has no such
+pointname and an analysis needing it cannot be done -- report that and move on.
+Searching again by another route wastes time and returns the same nothing.
+
+**Before concluding it is absent, list the family.** A family often uses a
+suffix you did not guess, so ask what suffixes exist rather than testing one
+guess at a time:
+
+```python
+sorted({r["name"][4:] or "(bare)" for r in find_signals("FS0%", limit=400)})
+# -> ['(bare)', 'C2', 'C3', 'DA', 'DB', 'DWDA', 'F', 'HE2', 'UP', ...]
+```
+
+That one call tells you which spectral lines the filterscopes actually record,
+which is faster and more reliable than guessing names and fetching each.
+
 ## First: `PTSERVER` / `getservbyname` errors mean the wrapper was omitted
 
 If a fetch fails with:

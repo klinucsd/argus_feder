@@ -65,6 +65,42 @@ os._exit(0)
 '''
 
 
+def find_signals(pattern, tree=None, limit=200):
+    """Search the DIII-D signal catalogue by name. One query, no MDSplus.
+
+    Answers "does a signal like this exist, and in which tree?" against the
+    catalogue of every archived pointname -- before paying to open a tree or
+    fetch anything. `pattern` is matched case-insensitively anywhere in the
+    name; use `%` for a wildcard inside it.
+
+        find_signals("FS%DA")        -> the D-alpha filterscope channels
+        find_signals("D2")           -> anything with D2 in the name
+        find_signals("IP", tree="EFIT01")
+
+    Returns {name, tree, full_path}, sorted by name.
+
+    AN EMPTY RESULT IS AN ANSWER. If nothing matches, the archive has no such
+    pointname, and an analysis that needs one cannot be done -- say so rather
+    than searching again by another route. Check the naming convention before
+    concluding: a family often uses a suffix you have not guessed, and listing
+    the family (`find_signals("FS00%")`) shows which suffixes exist.
+    """
+    import os
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from d3d_lakehouse import query as _q
+
+    like = pattern if "%" in pattern else "%" + pattern + "%"
+    sql = "SELECT name, tree, full_path FROM d3d.signal_names WHERE name ILIKE ?"
+    params = [like]
+    if tree:
+        sql += " AND tree ILIKE ?"
+        params.append(tree)
+    sql += " ORDER BY name, tree LIMIT ?"
+    params.append(int(limit))
+    return _q(sql, tuple(params))
+
+
 def fetch_ptdata(shot, pointnames, timeout=600):
     """Fetch PTDATA pointnames for one shot. Returns {name: {times, data, units}}.
 
