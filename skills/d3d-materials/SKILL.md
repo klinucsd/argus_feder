@@ -96,6 +96,30 @@ about -- a claim true within one regime is not true across both. Before
 writing one, sort the set it ranges over and look at the end you are claiming;
 where it holds in one grouping and not another, say which.
 
+**A range and an order-of-magnitude comparison are computed results, not
+hedges.** "Runs half to twice the other measurement", "three orders of
+magnitude below a monolayer", "a hundred to a thousand times deeper" -- each
+end of these is a separate claim, and a reader checks the end that is easier to
+refute. A range written wide to be safe is the opposite of safe: it asserts
+that values reach both ends, so a bound nothing attains is a wrong number, and
+it is wrong in the direction that makes the argument sound stronger. Compute
+the quantity for every member, then quote the minimum and maximum observed:
+
+```python
+r = [num[k] / den[k] for k in sorted(set(num) & set(den))]
+print("ratio %.2f - %.2f over %d samples" % (min(r), max(r), len(r)))
+```
+
+Where the comparison is against a scale rather than against another measured
+column -- a monolayer, a detection limit, an instrument's resolution, a
+literature ceiling -- write the division out and put the scale's own value in
+the sentence. Nothing has to be computed for "orders of magnitude below" to
+read well, which is why it survives into an answer unchecked; dividing costs
+one line and either confirms the phrase or replaces it. When the computed
+value turns out not to support the point the sentence was making, the point
+goes with it -- a supporting clause that is merely rephrased to match the
+arithmetic is no longer supporting anything.
+
 ## An exposure is a shared campaign
 
 Several samples sit in the same plasma over the same shots, so an exposure is
@@ -342,6 +366,24 @@ rendered, so a bare filename is right -- no directory, no absolute path. Every
 figure worth making is worth referencing; one that is saved but never
 referenced is invisible, which is indistinguishable from never having made it.
 
+This holds for a plotting script that reads no data at all. A figure whose
+numbers are already in hand gets written as self-contained matplotlib with the
+values as literals, and such a script has no other reason to import anything
+from here -- so it reaches for `fig.savefig` and loses every check below.
+Importing the module costs nothing in that script: `save_figure` resolves the
+working folder and inspects the figure locally, with no token and no request.
+
+```python
+import sys, os
+sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-materials"))
+import d3d_materials as mat
+...
+print(mat.save_figure(fig, "depth_resolution.png"))
+```
+
+`fig.savefig` in a script here means the figure was saved with nothing looking
+at it.
+
 `save_figure` writes into the working folder with `bbox_inches="tight"`, which
 is what keeps a legend placed beside the axes in the image.
 `bbox_to_anchor=(1.02, 0.5)` -- the usual way to keep a legend clear of the
@@ -393,6 +435,31 @@ ax.set_ylim(floor * 0.8, (value + sigma).max() * 1.3)
 Where the uncertainty is better given as numbers, report it in a table and
 describe the figure as showing values only -- what the text claims about a
 figure holds for the figure the reader is looking at.
+
+A third note names annotations that are drawn on top of each other:
+
+```
+save_figure: 1 pair(s) of hand-placed text blocks overlap and are unreadable
+where they cross ("UNRESOLVED: 0-0.5 um NRA 'surface' bin..." over "SETTLED as
+to band: 0.5-3 um...") -- a string anchored at a data coordinate renders as
+wide as it needs to, so shorten the text, move an anchor, or set ha=/va= so the
+blocks grow away from each other, then look at the saved file before reporting
+it
+```
+
+`ax.text(x, y, ...)` places a string by its anchor, and the string then renders
+as wide as it needs to. Two anchors chosen to sit in different regions of the
+plot say nothing about whether the two blocks stay in those regions, and a long
+caption runs straight through its neighbour. The figure saves without error and
+both strings are illegible where they cross.
+
+Where a block labels a region, anchor it inside that region and let it grow
+inward -- `ha="left"` at the region's left edge, `ha="right"` at its right
+edge -- so a caption that outgrows its region runs into empty canvas rather
+than into the next caption. On a log axis the same width in points covers a
+different span at each end, so a caption that fits near the right edge can be
+several decades wide near the left. Keep the long sentences in the answer text,
+where they reflow, and give the figure the short version.
 
 Only code running directly in the notebook kernel can use `plt.show()` or
 `display(...)`. When in doubt, save and reference -- that works either way.

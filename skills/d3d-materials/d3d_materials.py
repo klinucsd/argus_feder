@@ -52,7 +52,22 @@ def working_dir():
     matter how the script was invoked, which is also what lets the local-copy
     check actually hit.
     """
-    return os.environ.get("SAGE_OUTPUT_DIR") or os.getcwd()
+    here = os.environ.get("SAGE_OUTPUT_DIR")
+    if here and os.path.isdir(here):
+        return here
+    # The variable is normally exported, but a subprocess that does not inherit
+    # it falls back to the current directory -- which for a script launched by
+    # absolute path is the notebook's own folder, one level up. A file written
+    # there is outside the working folder: it gets swept back, and the script
+    # that looks for it next by the same relative name no longer finds it and
+    # regenerates it. The working folder is identifiable without the variable,
+    # so find it rather than write to the wrong place and be corrected.
+    cwd = os.getcwd()
+    if os.path.basename(cwd).endswith("_sage_"):
+        return cwd
+    import glob as _glob
+    here = [d for d in _glob.glob(os.path.join(cwd, "*_sage_")) if os.path.isdir(d)]
+    return here[0] if len(here) == 1 else cwd
 
 
 def _as_list(x):
@@ -756,6 +771,68 @@ def _errorbar_extents(ax):
     return out
 
 
+# A caption long enough that the writer could not have judged its rendered
+# width by eye, and an overlap large enough that neither block can be read
+# through the other. Short repeated labels -- a bar value, a row count, a
+# sample name -- are placed by a loop that already spaces them, and two of
+# those touching is a crowded axis, not a defect worth a note.
+_LONG_TEXT = 25
+_OVERLAP_FRACTION = 0.10
+
+
+def _text_collisions(fig):
+    """Pairs of hand-placed text blocks that are drawn on top of each other.
+
+    Only the texts the caller positioned itself -- `ax.text`, `ax.annotate`,
+    `fig.text` -- are considered, and only against others on the same axes.
+    Tick labels, axis labels, titles and legend entries are laid out by
+    matplotlib and do not collide with each other.
+
+    A text placed at a data coordinate has no idea how wide it will render, so
+    two annotations anchored well apart can still overlap once the strings are
+    long. Nothing in the drawing reports this: the figure saves cleanly and
+    both strings are simply unreadable where they cross.
+    """
+    try:
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+    except Exception:
+        return []
+    hits = []
+    for holder in [fig] + list(fig.axes):
+        items = []
+        for t in getattr(holder, "texts", ()):
+            body = t.get_text().strip()
+            if not t.get_visible() or not body:
+                continue
+            try:
+                bb = t.get_window_extent(renderer)
+            except Exception:
+                continue
+            if bb.width <= 0 or bb.height <= 0:
+                continue
+            items.append((body, bb))
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                (ta, a), (tb, b) = items[i], items[j]
+                if max(len(ta), len(tb)) < _LONG_TEXT:
+                    continue
+                dx = min(a.x1, b.x1) - max(a.x0, b.x0)
+                dy = min(a.y1, b.y1) - max(a.y0, b.y0)
+                if dx <= 0 or dy <= 0:
+                    continue
+                smaller = min(a.width * a.height, b.width * b.height)
+                if smaller > 0 and (dx * dy) / smaller >= _OVERLAP_FRACTION:
+                    hits.append((ta, tb))
+    return hits
+
+
+def _first_words(s, n=6):
+    words = " ".join(s.split())
+    parts = words.split(" ")
+    return " ".join(parts[:n]) + ("..." if len(parts) > n else "")
+
+
 def _figure_notes(fig):
     """What a reader could not work out from this figure on its own."""
     notes = []
@@ -805,6 +882,17 @@ def _figure_notes(fig):
             "to a positive floor, or report the uncertainties in a table and "
             "describe the figure as showing values only"
             % (hidden_low + hidden_high, bars, hidden_low, hidden_high))
+    hits = _text_collisions(fig)
+    if hits:
+        pairs = "; ".join('"%s" over "%s"' % (_first_words(a), _first_words(b))
+                          for a, b in hits[:3])
+        notes.append(
+            "%d pair(s) of hand-placed text blocks overlap and are unreadable "
+            "where they cross (%s) -- a string anchored at a data coordinate "
+            "renders as wide as it needs to, so shorten the text, move an "
+            "anchor, or set ha=/va= so the blocks grow away from each other, "
+            "then look at the saved file before reporting it"
+            % (len(hits), pairs))
     return notes
 
 
