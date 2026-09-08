@@ -909,9 +909,27 @@ def _figure_alt(fig, name):
             if ax.get_title():
                 text = ax.get_title()
                 break
+    text = _one_line(text)
     return (text
             or os.path.splitext(os.path.basename(name))[0].replace("_", " ").strip()
             or os.path.basename(name))
+
+
+def _one_line(text):
+    """Flatten a title into something that survives as markdown image alt text.
+
+    A matplotlib title routinely carries a newline -- a headline with the
+    statistics on a second line is the normal way to write one -- and the
+    reference this builds is `![<title>](<file>)`, which the notebook resolves
+    and replaces with the embedded image. A label broken across two lines is
+    not recognised as that pattern, so the image is silently left as unresolved
+    markdown: the answer reads as though it has a figure and the reader sees
+    none. Square brackets end the label early and do the same thing.
+    """
+    if not text:
+        return ""
+    flat = " ".join(str(text).split())
+    return flat.replace("[", "(").replace("]", ")").strip()
 
 
 _ARTIFACT_FACTS = {}
