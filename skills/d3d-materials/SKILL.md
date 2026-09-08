@@ -57,6 +57,45 @@ The same applies to `observations()`, `profiles()`, `shots_for_samples()`,
 `samples_for_shots()`, `exposures()`, `exposure_conditions()` and
 `artifacts()`. All of them accept either a single value or a collection.
 
+## What a comparison rests on
+
+`design()` reports the experiment's cells -- each distinct combination of
+exposures, the samples in it, and how many:
+
+```python
+for c in mat.design():
+    print(c["n_samples"], [e["slot"] for e in c["exposures"]], c["samples"])
+```
+
+Read it before stating what a result rests on, and state what it says. Two
+numbers that differ can differ because a treatment did something or because
+they came from two different coupons, and `n_samples` is what separates those:
+a cell holding one sample has no replication, so a difference between two such
+cells cannot be told apart from coupon-to-coupon variation, however large it
+is and however small the instrument's own uncertainty.
+
+It also gives a treatment its levels. Cells that went through *different*
+exposures at the same facility are different levels of that treatment, even
+where the slot is labelled the same -- the `exposure_id` distinguishes them.
+
+**Where a treatment has more than one level, compare each level against its
+control separately and give both numbers.** Write "at the lower setting it
+rose from a to b, at the higher it fell to c", not "the treated samples were
+lower". A claim about "the treated samples" as a group is false the moment two
+levels disagree in sign, and it is the levels that carry the physics -- a
+treatment that helps at one temperature and hurts at another is the finding,
+not noise to be averaged away. With one sample per cell there is no group to
+average over in any case: check `n_samples` before writing a sentence whose
+subject is plural.
+
+**A superlative is a claim about every member of a set, so check it against
+the whole set and name the set.** "The highest", "the lowest", "the least of
+its group" reads as a summary and is refuted by one member, and the member
+that refutes it is usually in the half of the table the sentence is not
+about -- a claim true within one regime is not true across both. Before
+writing one, sort the set it ranges over and look at the end you are claiming;
+where it holds in one grouping and not another, say which.
+
 ## An exposure is a shared campaign
 
 Several samples sit in the same plasma over the same shots, so an exposure is
@@ -113,6 +152,21 @@ for a in mat.artifacts(sample_names=names, kind=None):
 path = mat.fetch_artifact(some_artifact_id, dest="/tmp")
 ```
 
+`artifacts(sample_names=...)` answers which files belong to those samples,
+and that is a subset of the delivery. A file may be attached to a **shot**
+instead -- an instrument export describes a discharge rather than a coupon, so
+it carries no sample -- and a sample-scoped call does not return it. When the
+question is what the delivery holds, ask the catalogue itself:
+
+```python
+everything = mat.artifacts()                     # the whole catalogue
+for_shots = mat.artifacts(shots=[...])           # files belonging to a group of shots
+```
+
+Take any count of what a delivery contains from the unfiltered call, and read
+the `kind` values back from it: a kind that appears only on shot-linked rows is
+invisible to every sample-scoped query.
+
 `kind` comes from how the provider organised the delivery, so read the values
 back from `artifacts()` rather than assuming them. A row whose `bytes` is 0
 arrived empty; `notes` records that, and fetching it raises
@@ -127,9 +181,48 @@ plasma conditions, analysis spreadsheets. A question about what a surface looks
 like, or about how a recorded number was arrived at, is answered from the files
 and cannot be answered from the tables.
 
+**A value the tables already hold, take from the tables.** An observation row
+carries its own `unit`, so the number and its unit travel together. A
+spreadsheet does not: the same quantity can appear in two adjacent columns
+under one header in different units, while another quantity on the same sheet
+appears in only one of them -- so a number read from a sheet is a number whose
+unit has to be carried by hand from a header rows above it, and reading one
+column left or right is a silent factor of ten thousand. Go to a file for what
+the tables do not hold, which is what the files are for; when a sheet is the
+only source for a value, quote the unit from its header in the same breath as
+the number.
+
 `artifacts()` lists them; `kind` and `media_type` say what each one is. Read
 those back rather than assuming — they follow how the provider organised the
 delivery.
+
+**The lakehouse is the authority on sample identity.** A delivered file may
+label the same samples differently from the tables -- an earlier or provisional
+naming that the ingest resolved. Where a file's labels disagree with the
+lakehouse, the lakehouse keys are correct and its values need no remapping:
+read a file for what it measures, and take who it belongs to from the tables.
+That is settled provenance rather than a finding, so it needs no comment in an
+answer. The same holds for what a file says about itself: when its
+commentary refers to samples by labels the ingest superseded, restate its
+findings under the lakehouse names. The finding is what carries over and it
+transfers unchanged, while quoting the older label forces a digression about
+naming into an answer that is about the science.
+
+**Where two delivered sources disagree on a value, say which one you used and
+why.** Name the source you took the number from -- the tables, or the document
+-- and leave it there. Diagnosing the cause reaches past what the delivery can
+support: an apparent transposition between two documents is as often the older
+naming showing through as it is a clerical error, and nothing inside the
+delivery distinguishes them. Reporting which source an answer rests on is
+accurate and sufficient; asserting that a provider's file contains a mistake is
+neither.
+
+**A number carries its source with it.** A value as the record states it, the
+same value rebuilt from the raw signal, and a value measured by a second
+instrument are three different claims, and an answer that draws on more than
+one puts them side by side where only the label tells them apart. Say of each
+number which it is. When a rebuild lands on a recorded value that agreement is
+itself the result, and quoting the two as one number is what loses it.
 
 ### Images
 
@@ -153,6 +246,19 @@ Two failure modes, both of which produce a figure that looks fine:
   seconds apart, appears as two files. `image_artifacts()` drops one of each
   such pair by comparing companion metadata; pass
   `drop_near_duplicates=False` to see everything.
+
+  **Two counts exist, and quoting them together is wrong.** Each row carries
+  `represents`, the number of delivered files it stands for:
+
+  ```python
+  len(rows)                              # images to look at (deduplicated)
+  sum(r["represents"] for r in rows)     # files as delivered
+  ```
+
+  Report one or the other and name which. A list that gives the delivered
+  count for one sample beside the deduplicated count for another is
+  inconsistent even though both numbers are correct — and it reads as correct,
+  because each figure checks out on its own.
 - **Mixed magnification.** Two images at different magnifications differ
   visibly, but the difference is zoom. `show_images()` refuses rather than
   drawing it. Select one magnification first:
@@ -161,11 +267,11 @@ Two failure modes, both of which produce a figure that looks fine:
 mag = "50000"                              # a value seen in the metadata above
 pick, seen = [], set()
 for a in imgs:                             # already fetched -- do not re-query
-    if a["metadata"].get("CM_MAG") == mag and a["sample"] not in seen:
-        seen.add(a["sample"])
+    if a["metadata"].get("CM_MAG") == mag and a["sample_name"] not in seen:
+        seen.add(a["sample_name"])
         pick.append(a)                     # one image per sample, same settings
 mat.show_images([a["artifact_id"] for a in pick],
-                labels=[a["sample"] for a in pick],
+                labels=[a["sample_name"] for a in pick],
                 title="surface comparison")
 ```
 
@@ -219,13 +325,13 @@ analysis scripts here are run -- has no connection to the notebook's display,
 so `plt.show()` in one does nothing at all. The figure lands on disk and the
 reader never sees it.
 
-**Save it into the working folder, then reference it from the final answer:**
+**Save it with `mat.save_figure`, then paste the reference it returns into
+the answer text:**
 
 ```python
-fig.savefig("retention_by_method.png", bbox_inches="tight")   # in the script
+ref = mat.save_figure(fig, "retention_by_method.png")   # in the script
+print(ref)
 ```
-
-then, in the answer text itself:
 
 ```
 ![Deuterium retention by method](retention_by_method.png)
@@ -235,6 +341,58 @@ The reference is resolved against the working folder when the answer is
 rendered, so a bare filename is right -- no directory, no absolute path. Every
 figure worth making is worth referencing; one that is saved but never
 referenced is invisible, which is indistinguishable from never having made it.
+
+`save_figure` writes into the working folder with `bbox_inches="tight"`, which
+is what keeps a legend placed beside the axes in the image.
+`bbox_to_anchor=(1.02, 0.5)` -- the usual way to keep a legend clear of the
+data -- puts it past the right edge of the canvas, and a plain
+`fig.savefig(path)` crops there: the legend is drawn and then cut away, and
+what lands on disk is a figure carrying several unidentified curves that looks
+entirely deliberate.
+
+It also prints a note when a curve cannot be identified from the figure alone.
+Act on the note in the same script run; the reader has only the figure:
+
+```
+save_figure: one figure-level legend spans 3 panels whose series labels
+differ, so it can name the series of only one of them -- label the series by
+what the panels share and put the rest in each panel title, or give every
+panel its own ax.legend()
+```
+
+That arises when each panel holds a different set of samples and the legend is
+built from one of them, as `axes[0].get_legend_handles_labels()` fed to
+`fig.legend(...)` does. Labelling by pre-treatment class, regime, or method --
+whatever the panels have in common -- makes one shared legend true of every
+panel, and the sample identities then belong in the panel titles.
+
+A second note names uncertainties that reached the plotting call and were
+then rendered invisible:
+
+```
+save_figure: error bars are drawn but 59 of 60 are not visible in the plotted
+range (59 reach zero or below on a log axis, 0 run above the top) -- set the
+y-limits from value+sigma and draw the lower end to a positive floor, or
+report the uncertainties in a table and describe the figure as showing values
+only
+```
+
+A reported sigma larger than its own value is ordinary in this data. On a log
+axis the lower end of such a bar is non-positive and cannot be drawn at all,
+and the upper end lands outside limits autoscaled from the values alone -- so
+the bars disappear while the call that asked for them still reads correctly.
+Give the lower end a positive floor and take the limits from `value + sigma`:
+
+```python
+floor = value.min() / 50.0                          # positive, below the data
+lower = np.maximum(value - sigma, floor)
+ax.errorbar(depth, value, yerr=[value - lower, sigma], label=name)
+ax.set_ylim(floor * 0.8, (value + sigma).max() * 1.3)
+```
+
+Where the uncertainty is better given as numbers, report it in a table and
+describe the figure as showing values only -- what the text claims about a
+figure holds for the figure the reader is looking at.
 
 Only code running directly in the notebook kernel can use `plt.show()` or
 `display(...)`. When in doubt, save and reference -- that works either way.
@@ -331,6 +489,25 @@ back in lowercase.
 One query per sample is one round trip per sample here too. If the question is
 about a group, the query should mention the group -- use `IN` or a join, not a
 loop.
+
+Run it with `query` from the lakehouse client, which sits in this same
+directory. A group goes in as one parameter behind one parenthesised
+placeholder, and the client expands it into one placeholder per element:
+
+```python
+import d3d_lakehouse as lh
+
+rows = lh.query("SELECT s.name, o.quantity, o.value_num "
+                "FROM materials.observations o "
+                "JOIN materials.samples s USING (sample_key) "
+                "WHERE s.name IN (?) AND o.method = ?",
+                (["W-DH", "W-DL"], "LAMS"))
+```
+
+`?` and `%s` both work as the placeholder token. The expansion needs the
+parentheses and one placeholder per parameter: `IN (?)` with a list is
+expanded, while `IN ?`, `IN %s` without parentheses, or `= ANY(%s)` are passed
+through as written and the service rejects them.
 
 ## What the values mean
 

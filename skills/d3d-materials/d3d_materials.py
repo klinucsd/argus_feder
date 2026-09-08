@@ -150,7 +150,7 @@ def observations(sample_names=None, quantity=None, method=None, stage=None,
     `quantities()` reported. `profile` selects depth-resolved rows when True and
     single values when False; None returns both.
     """
-    sql = ["""SELECT s.name AS sample, o.stage, o.method, o.quantity, o.qualifier,
+    sql = ["""SELECT s.name AS sample_name, o.stage, o.method, o.quantity, o.qualifier,
                      o.value_num, o.value_std, o.value_text, o.unit,
                      o.depth_um, o.point_index, o.exposure_id, o.artifact_id
                 FROM materials.observations o
@@ -180,7 +180,7 @@ def values_by_sample(sample_names, quantity, method=None, stage=None):
                         stage=stage, profile=False)
     out = {}
     for r in rows:
-        out.setdefault(r["sample"], []).append(
+        out.setdefault(r["sample_name"], []).append(
             {k: r[k] for k in ("method", "stage", "quantity", "qualifier",
                                "value_num", "value_std", "unit")})
     return {k: (v[0] if len(v) == 1 else v) for k, v in out.items()}
@@ -190,14 +190,18 @@ def profiles(sample_names, quantity, method=None):
     """Depth-resolved series for a GROUP of samples -> {sample: [points]}.
 
     Points keep the order they were delivered in, and carry depth when the
-    delivery supplied a depth axis.
+    delivery supplied a depth axis. A point is a dict with the same keys a
+    row from `observations()` uses -- `depth_um`, `value_num`, `value_std`,
+    `unit`, `point_index` -- so a profile and a single measurement are
+    filtered, renamed and plotted the same way.
     """
     rows = observations(sample_names, quantity=quantity, method=method, profile=True)
     out = {}
     for r in rows:
-        out.setdefault(r["sample"], []).append(
+        out.setdefault(r["sample_name"], []).append(
             {"point_index": r["point_index"], "depth_um": r["depth_um"],
-             "value": r["value_num"], "std": r["value_std"], "unit": r["unit"]})
+             "value_num": r["value_num"], "value_std": r["value_std"],
+             "unit": r["unit"]})
     return out
 
 
@@ -257,6 +261,55 @@ def exposure_conditions(exposure_ids=None, sample_names=None):
     return _query(" ".join(sql), tuple(params))
 
 
+def design(delivery_id=None):
+    """The experiment's cells: which exposures each sample went through.
+
+    A cell is a distinct combination of exposures, and the samples sharing it
+    are that cell's replicates. This is the question to ask before stating what
+    a comparison rests on -- `n_samples` is how many independent coupons
+    support it, and a cell of one has no replication at all, so a difference
+    between two such cells is a difference between two coupons and cannot be
+    separated from coupon-to-coupon variation.
+
+    It also says how many levels a factor has. Two cells differing only in
+    which exposure of a facility they went through are two levels of that
+    treatment, and a result that holds at one level is not a result about the
+    treatment. Read the levels back from here rather than assuming a treatment
+    is present-or-absent.
+
+    Derived from `exposure_samples`, so it follows whatever design the delivery
+    actually contains.
+    """
+    rows = _query("""SELECT s.name AS sample_name, e.exposure_id, e.slot,
+                            e.facility, e.device
+                       FROM materials.samples s
+                       LEFT JOIN materials.exposure_samples x
+                              ON x.sample_key = s.sample_key
+                       LEFT JOIN materials.exposures e
+                              ON e.exposure_id = x.exposure_id
+                      WHERE (%s IS NULL OR s.delivery_id = %s)
+                      ORDER BY s.name, e.exposure_id""",
+                   (delivery_id, delivery_id))
+    per_sample = {}
+    detail = {}
+    for r in rows:
+        got = per_sample.setdefault(r["sample_name"], [])
+        if r["exposure_id"] is not None:
+            got.append(r["exposure_id"])
+            detail[r["exposure_id"]] = {"exposure_id": r["exposure_id"],
+                                        "slot": r["slot"], "facility": r["facility"],
+                                        "device": r["device"]}
+    cells = {}
+    for name, ids in per_sample.items():
+        cells.setdefault(tuple(sorted(ids)), []).append(name)
+    out = []
+    for ids, names in sorted(cells.items(), key=lambda kv: (len(kv[0]), kv[0])):
+        out.append({"exposures": [detail[i] for i in ids],
+                    "samples": sorted(names),
+                    "n_samples": len(names)})
+    return out
+
+
 def shots_for_samples(sample_names=None, device=None):
     """{sample_name: [shot, ...]} for a GROUP of samples, in one request.
 
@@ -264,7 +317,7 @@ def shots_for_samples(sample_names=None, device=None):
     numbers, so they go straight into the disruption, ELM and shot-fetching
     skills. `device` says which machine they are shots of.
     """
-    sql = ["""SELECT s.name AS sample, e.device, sh.shot
+    sql = ["""SELECT s.name AS sample_name, e.device, sh.shot
                 FROM materials.samples s
                 JOIN materials.exposure_samples x USING (sample_key)
                 JOIN materials.exposures e USING (exposure_id)
@@ -279,7 +332,7 @@ def shots_for_samples(sample_names=None, device=None):
     sql.append("ORDER BY s.ordinal, sh.shot")
     out = {}
     for r in _query(" ".join(sql), tuple(params)):
-        out.setdefault(r["sample"], []).append(r["shot"])
+        out.setdefault(r["sample_name"], []).append(r["shot"])
     return out
 
 
@@ -289,7 +342,7 @@ def samples_for_shots(shots, device=None):
     Answers "was anything exposed during these shots", for a whole shot list at
     once. A shot with no sample is absent from the result.
     """
-    sql = ["""SELECT sh.shot, e.device, s.name AS sample
+    sql = ["""SELECT sh.shot, e.device, s.name AS sample_name
                 FROM materials.exposure_shots sh
                 JOIN materials.exposures e USING (exposure_id)
                 JOIN materials.exposure_samples x USING (exposure_id)
@@ -301,7 +354,7 @@ def samples_for_shots(shots, device=None):
     sql.append("ORDER BY sh.shot, s.ordinal")
     out = {}
     for r in _query(" ".join(sql), tuple(params)):
-        out.setdefault(r["shot"], []).append(r["sample"])
+        out.setdefault(r["shot"], []).append(r["sample_name"])
     return out
 
 
@@ -317,7 +370,7 @@ def artifacts(sample_names=None, shots=None, kind=None, delivery_id=None):
     """
     sql = ["""SELECT a.artifact_id, a.filename, a.kind, a.media_type, a.bytes,
                      a.notes, a.device, a.shot, a.delivery_id, a.metadata,
-                     s.name AS sample
+                     s.name AS sample_name
                 FROM materials.artifacts a
                 LEFT JOIN materials.samples s USING (sample_key)
                WHERE 1=1"""]
@@ -491,6 +544,12 @@ def image_metadata(artifact_id):
     return (rows[0]["metadata"] or {}) if rows else {}
 
 
+def _re_sub(pattern, repl, text):
+    """`re.sub`, imported here so the module keeps its lazy-import style."""
+    import re
+    return re.sub(pattern, repl, text)
+
+
 def image_artifacts(sample_names=None, delivery_id=None, drop_near_duplicates=True):
     """Image files for a GROUP of samples, with their acquisition metadata.
 
@@ -499,22 +558,59 @@ def image_artifacts(sample_names=None, delivery_id=None, drop_near_duplicates=Tr
     default one of each such pair is dropped: images whose companion metadata
     is identical except for a time-valued field are treated as the same
     picture. Pass drop_near_duplicates=False to see everything.
+
+    Each row carries `represents` -- the number of delivered files it stands
+    for -- so both populations are recoverable and neither can be quoted by
+    accident:
+
+        len(rows)                            images to look at (deduplicated)
+        sum(r["represents"] for r in rows)   files as delivered
+
+    Quoting a count from one of these beside a count from the other, without
+    saying which is which, is inconsistent even though both numbers are right.
     """
     rows = [a for a in artifacts(sample_names=sample_names, delivery_id=delivery_id)
             if (a["media_type"] or "").startswith("image/")]
     for a in rows:
         a["metadata"] = a.get("metadata") or {}
+    # Every row carries `represents`: how many delivered files it stands for.
+    # Without it a count of these rows is ambiguous -- it is the deduplicated
+    # population, but nothing on the row says so, and an answer that quotes it
+    # beside a raw catalogue count for another sample is inconsistent while
+    # every individual number is correct. That happened. So the row states its
+    # own multiplicity, and both populations are recoverable:
+    #
+    #     len(rows)                      -> images to look at (deduplicated)
+    #     sum(r["represents"] for r in rows) -> files as delivered
+    #
+    # Say which one you are quoting.
     if not drop_near_duplicates:
+        for a in rows:
+            a["represents"] = 1
         return rows
     seen, keep = {}, []
     for a in sorted(rows, key=lambda r: r["filename"]):
-        sig = tuple(sorted((k, v) for k, v in a["metadata"].items()
-                           if "TIME" not in k.upper() and "DATE" not in k.upper()))
+        # Acquisition settings alone do NOT identify a capture: an operator can
+        # image two fields on one sample at the same magnification, voltage and
+        # detector, and their metadata is then identical. Keying on settings
+        # only, the second field is absorbed into the first and disappears from
+        # the catalogue -- an image nobody can ask for. The filename separates
+        # them, so it joins the key, with a one-letter variant suffix removed so
+        # a raw/processed pair still collapses. Adding to the key can only
+        # split, never merge: a delivery that names files differently gets less
+        # deduplication, not a lost field.
+        stem = _re_sub(r"\.[^.]+$", "", a["filename"])
+        sig = (a["sample_name"], _re_sub(r"_[A-Za-z]$", "", stem),
+               tuple(sorted((k, v) for k, v in a["metadata"].items()
+                            if "TIME" not in k.upper() and "DATE" not in k.upper())))
         if not sig:
+            a["represents"] = 1
             keep.append(a)
             continue
         if sig in seen:
+            seen[sig]["represents"] += 1
             continue
+        a["represents"] = 1
         seen[sig] = a
         keep.append(a)
     return keep
@@ -573,6 +669,163 @@ def show_images(artifact_ids, labels=None, ncols=3, width=4.2, title=None):
     return fig
 
 
+def save_figure(fig, filename, dpi=None):
+    """Save a figure into the working folder and return its answer reference.
+
+    Use this instead of `fig.savefig(...)`. It saves with
+    `bbox_inches="tight"`, which is what keeps a legend placed beside the axes
+    -- `bbox_to_anchor=(1.02, 0.5)`, the usual way to keep it clear of the
+    data -- inside the saved image. That anchor puts the legend past the right
+    edge of the canvas, and a plain `savefig` crops at the edge: the legend is
+    drawn and then cut away, leaving a figure that looks deliberate with
+    several unidentified curves on it. The kwarg is the whole difference, so
+    it is applied here rather than left to each caller.
+
+    Returns the markdown line that puts the figure in the answer. Paste it
+    into the answer text -- a figure saved but never referenced is invisible
+    to the reader, which is indistinguishable from never having made it.
+
+        ref = mat.save_figure(fig, "lams_profiles_hmode.png")
+
+    Prints a note when a curve cannot be identified from the figure alone:
+    labelled curves with no legend, several curves carrying no labels, or one
+    figure-level legend spanning panels whose series differ -- that last can
+    name the series of only one panel. Fix what it names before moving on;
+    the reader has only the figure.
+    """
+    root = os.path.realpath(working_dir())
+    path = filename if os.path.isabs(filename) else os.path.join(root, filename)
+    full = os.path.realpath(path)
+    if full != root and not full.startswith(root + os.sep):
+        raise ValueError(
+            "%s is outside the working folder (%s), which is the only place "
+            "the notebook can read a figure back from. Pass a bare filename, "
+            "or a subfolder of it." % (filename, root))
+    parent = os.path.dirname(full)
+    if parent and not os.path.isdir(parent):
+        os.makedirs(parent)
+    for note in _figure_notes(fig):
+        print("save_figure: %s" % note)
+    fig.savefig(full, bbox_inches="tight", **({} if dpi is None else {"dpi": dpi}))
+    name = os.path.relpath(full, root)
+    return "![%s](%s)" % (_figure_alt(fig, name), name)
+
+
+def _series_labels(ax):
+    """The legend labels an axes would show, in order, ignoring the hidden."""
+    return [lab for lab in ax.get_legend_handles_labels()[1]
+            if lab and not lab.startswith("_")]
+
+
+def _series_colors(ax):
+    """Distinct line colours, as a stand-in for series count when unlabelled.
+
+    Deduplicating by colour is what makes this usable on an errorbar plot,
+    where the caps and bars are drawn as further lines in the colour of the
+    series they belong to.
+    """
+    from matplotlib.colors import to_hex
+    out = set()
+    for line in ax.get_lines():
+        try:
+            out.add(to_hex(line.get_color()))
+        except Exception:
+            pass
+    return out
+
+
+def _errorbar_extents(ax):
+    """The y range each error bar on an axes actually spans.
+
+    Error bars live in the axes' containers, not its lines, so they are
+    invisible to a check that only walks `ax.get_lines()`.
+    """
+    out = []
+    for cont in getattr(ax, "containers", ()):
+        cols = getattr(cont, "lines", (None, None, ()))
+        cols = cols[2] if len(cols) > 2 else ()
+        for col in cols or ():
+            try:
+                segments = col.get_segments()
+            except Exception:
+                continue
+            for seg in segments:
+                if len(seg):
+                    ys = [point[1] for point in seg]
+                    out.append((min(ys), max(ys)))
+    return out
+
+
+def _figure_notes(fig):
+    """What a reader could not work out from this figure on its own."""
+    notes = []
+    axes = [ax for ax in fig.axes if ax.has_data()]
+    if not axes:
+        return notes
+    labels = {id(ax): _series_labels(ax) for ax in axes}
+    fig_legend = bool(getattr(fig, "legends", ()))
+    ax_legend = any(ax.get_legend() is not None for ax in axes)
+    if not fig_legend and not ax_legend:
+        named = max((len(labels[id(ax)]) for ax in axes), default=0)
+        if named > 1:
+            notes.append(
+                "%d labelled series and no legend on the figure -- add "
+                "fig.legend(...) or ax.legend() so the curves can be told "
+                "apart" % named)
+        elif named == 0:
+            drawn = max((len(_series_colors(ax)) for ax in axes), default=0)
+            if drawn > 1:
+                notes.append(
+                    "%d curves drawn, none of them labelled -- pass label= on "
+                    "each and add a legend" % drawn)
+    if fig_legend and len(axes) > 1:
+        distinct = {frozenset(labels[id(ax)]) for ax in axes if labels[id(ax)]}
+        if len(distinct) > 1:
+            notes.append(
+                "one figure-level legend spans %d panels whose series labels "
+                "differ, so it can name the series of only one of them -- "
+                "label the series by what the panels share and put the rest "
+                "in each panel title, or give every panel its own ax.legend()"
+                % len(axes))
+    hidden_low = hidden_high = bars = 0
+    for ax in axes:
+        top = ax.get_ylim()[1]
+        log_y = ax.get_yscale() == "log"
+        for low, high in _errorbar_extents(ax):
+            bars += 1
+            if log_y and low <= 0:
+                hidden_low += 1
+            elif high > top:
+                hidden_high += 1
+    if bars and (hidden_low or hidden_high):
+        notes.append(
+            "error bars are drawn but %d of %d are not visible in the plotted "
+            "range (%d reach zero or below on a log axis, %d run above the "
+            "top) -- set the y-limits from value+sigma and draw the lower end "
+            "to a positive floor, or report the uncertainties in a table and "
+            "describe the figure as showing values only"
+            % (hidden_low + hidden_high, bars, hidden_low, hidden_high))
+    return notes
+
+
+def _figure_alt(fig, name):
+    """Alt text for the reference: the figure's own title, else its filename."""
+    text = ""
+    try:
+        text = fig.get_suptitle()
+    except Exception:
+        sup = getattr(fig, "_suptitle", None)
+        text = sup.get_text() if sup is not None else ""
+    if not text:
+        for ax in fig.axes:
+            if ax.get_title():
+                text = ax.get_title()
+                break
+    return (text
+            or os.path.splitext(os.path.basename(name))[0].replace("_", " ").strip()
+            or os.path.basename(name))
+
+
 _ARTIFACT_FACTS = {}
 
 
@@ -583,10 +836,11 @@ def _artifact_facts(artifact_id):
     cannot change while a script runs.
     """
     if artifact_id not in _ARTIFACT_FACTS:
-        rows = _query("SELECT filename, bytes FROM materials.artifacts "
+        rows = _query("SELECT filename, bytes, sha256 FROM materials.artifacts "
                       "WHERE artifact_id = ?", (artifact_id,))
         _ARTIFACT_FACTS[artifact_id] = (
-            (rows[0]["filename"], rows[0]["bytes"]) if rows else (None, None))
+            (rows[0]["filename"], rows[0]["bytes"], rows[0]["sha256"])
+            if rows else (None, None, None))
     return _ARTIFACT_FACTS[artifact_id]
 
 
@@ -596,6 +850,27 @@ def _expected_filename(artifact_id):
 
 def _expected_size(artifact_id):
     return _artifact_facts(artifact_id)[1]
+
+
+def _expected_sha256(artifact_id):
+    return _artifact_facts(artifact_id)[2]
+
+
+_LOCAL_HASHES = {}
+
+
+def _local_sha256(path):
+    """sha256 of a local file, memoised on (path, size, mtime)."""
+    import hashlib
+    st = os.stat(path)
+    key = (path, st.st_size, st.st_mtime_ns)
+    if key not in _LOCAL_HASHES:
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for block in iter(lambda: fh.read(1024 * 1024), b""):
+                h.update(block)
+        _LOCAL_HASHES[key] = h.hexdigest()
+    return _LOCAL_HASHES[key]
 
 
 _DOC_TEXT = {}
@@ -739,13 +1014,44 @@ def fetch_artifact(artifact_id, dest=None):
     # path of every analysis. Several scripts in one session each re-pulling
     # the same files is the normal pattern, so this is the common case.
     dest = dest or working_dir()
+    # Identity is the CONTENT, not the name and size.
+    #
+    # A delivery reuses filenames across samples -- one micrograph name appears
+    # once per sample -- and uncompressed images of the same settings are
+    # byte-identical in LENGTH while differing entirely in content. Keying the
+    # cache on (filename, size) therefore returned the FIRST sample's image for
+    # every later sample, silently: right name, right size, wrong picture. In
+    # this delivery 88 (filename, size) pairs are shared by more than one
+    # artifact and all 88 differ in content, so the collision was the rule
+    # rather than the exception.
+    #
+    # The catalogue records a checksum per artifact, so the check verifies that.
+    # Hashing is memoised on (path, size, mtime), and a mismatch means the name
+    # is taken by a DIFFERENT artifact -- so the fetch goes to a disambiguated
+    # path instead of overwriting a file another sample's analysis may hold.
     want = _expected_size(artifact_id)
+    want_hash = _expected_sha256(artifact_id)
+    _target = None
     if dest:
         cached = dest if os.path.isfile(dest) else os.path.join(
             dest, _expected_filename(artifact_id) or "")
-        if (want and os.path.isfile(cached)
-                and os.path.getsize(cached) == want):
-            return cached
+        if want and os.path.isfile(cached) and os.path.getsize(cached) == want:
+            try:
+                if not want_hash or _local_sha256(cached) == want_hash:
+                    return cached
+            except OSError:
+                pass
+            # Same name, same length, different artifact.
+            _stem, _ext = os.path.splitext(os.path.basename(cached))
+            _target = os.path.join(os.path.dirname(cached),
+                                   "%s__%s%s" % (_stem, artifact_id[:8], _ext))
+            if (os.path.isfile(_target) and want
+                    and os.path.getsize(_target) == want):
+                try:
+                    if not want_hash or _local_sha256(_target) == want_hash:
+                        return _target
+                except OSError:
+                    pass
 
     url = "%s/materials/artifact/%s" % (_endpoint(), artifact_id)
     headers = {}
@@ -755,8 +1061,8 @@ def fetch_artifact(artifact_id, dest=None):
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=300) as resp:
-            name = dest or resp.headers.get_filename() or artifact_id
-            if dest and os.path.isdir(dest):
+            name = _target or dest or resp.headers.get_filename() or artifact_id
+            if _target is None and dest and os.path.isdir(dest):
                 name = os.path.join(dest, resp.headers.get_filename() or artifact_id)
             with open(name, "wb") as fh:
                 while True:
