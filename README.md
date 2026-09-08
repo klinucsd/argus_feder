@@ -241,7 +241,7 @@ close the gap — about a hundred times finer than anything in the delivery.
 The JupyterHub notebooks need no install step — use the prebuilt image:
 
 ```
-kaiucsd/argus-feder:0.1.5
+kaiucsd/argus-feder:0.1.7
 ```
 
 Supply two credentials at runtime (neither is baked into the image):
