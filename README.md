@@ -221,6 +221,21 @@ record establishes from what it only suggests.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_d3d_jupyterhub.ipynb)
 
+### Where the deuterium sits: a carbon film, or the tungsten?
+
+Retained fuel is the number a reactor designer cares about, and the samples did not
+come back as clean tungsten — DIII-D's walls carry carbon, and it deposits on
+whatever is exposed. Deuterium held in a carbon film behaves nothing like deuterium
+trapped in tungsten, so the same measured inventory means two different things
+depending on where it sits. Five questions test whether the delivery can tell.
+
+The answer is partly negative and the notebook says so: the deep band is settled as
+tungsten-resident, the other three-quarters is pinned only to "above half a micron",
+and the closing question works out the depth resolution a measurement would need to
+close the gap — about a hundred times finer than anything in the delivery.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_carbon_jupyterhub.ipynb)
+
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
