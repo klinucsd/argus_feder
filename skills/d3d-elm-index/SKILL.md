@@ -164,13 +164,30 @@ another opinion. `label_sets()` says which is which:
 ```python
 for r in X.label_sets()["runs"]:
     print(r["run_id"], r["method"], r["granularity"], r["kind"],
-          r["shots"], "GROUND TRUTH" if r["is_ground_truth"] else "detector")
+          r["labeled_shots"], "of", r["shots"], "attempted",
+          "GROUND TRUTH" if r["is_ground_truth"] else "detector")
 ```
 
-Each row carries `is_ground_truth` and its own `shots` count. **Read them
+Each row carries `is_ground_truth` and two different shot counts. **Read them
 rather than assuming which run is which or how far it reaches** -- runs are
 added over time, and a hand-labelled run typically covers a small fraction of
 the shots a detector run does.
+
+**`shots` is how many shots the run was applied to. `labeled_shots` is how many
+carry labels. A sentence about reach needs the second one.** The gap between
+them is not an error: `status_counts` splits it into `error` (the method
+crashed) and `none_found` (the method ran and the shot genuinely holds no
+events). A hand-labelled run reports `none_found` when the expert looked and
+saw no ELMs -- which is a finding, and is why "the expert labelled N shots" and
+"N shots carry expert events" are different numbers.
+
+Write whichever one the sentence means, and say which:
+
+```python
+r = [x for x in X.label_sets()["runs"] if x["run_id"] == 4][0]
+print("applied to %d shots; %d carry events; %d ran and found nothing"
+      % (r["shots"], r["labeled_shots"], r["n_ran_and_found_nothing"]))
+```
 
 Ground-truth runs are **scoped**: they cover only the shots and time windows a
 person actually labelled. Outside that scope they assert nothing -- absence is

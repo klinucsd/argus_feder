@@ -827,7 +827,13 @@ def label_sets():
             "kind": _run_kind(r),
             "source": "hand-labelled by a domain expert" if human else "detector output",
             "is_ground_truth": human,
+            # `shots` is how many shots the run was APPLIED to. It is not
+            # coverage: a run can be applied to a shot and produce nothing,
+            # either because it crashed or because the shot genuinely holds
+            # no events. `labeled_shots` is the number that actually carry
+            # labels, and it is the one a sentence about reach needs.
             "shots": counts.get(r["run_id"], 0),
+            "labeled_shots": status.get(r["run_id"], {}).get("labeled", 0),
             "status_counts": status.get(r["run_id"], {}),
             "n_failed": status.get(r["run_id"], {}).get("error", 0),
             "n_ran_and_found_nothing": status.get(r["run_id"], {}).get("none_found", 0),
