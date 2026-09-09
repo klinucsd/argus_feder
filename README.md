@@ -88,8 +88,8 @@ a success.
 
 An analysis rather than a question: ARGUS uses stored ELM event times to sort
 Thomson scattering measurements by where they fall in the ELM cycle, then shows
-what an average over everything hides. Thomson samples on its own clock — about
-eight times faster than the ELMs, but unsynchronised with them — so each profile
+what an average over everything hides. Thomson samples on its own clock — a few
+times faster than the ELMs, but unsynchronised with them — so each profile
 lands at an arbitrary point in the cycle, and the naive average blends
 crash-phase and recovered plasma into a state the discharge never holds. The
 notebook picks a suitable discharge from the stored labels, checks the event
