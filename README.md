@@ -236,6 +236,23 @@ close the gap — about a hundred times finer than anything in the delivery.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_carbon_jupyterhub.ipynb)
 
+### Does a helium bubble layer change how tungsten survives a tokamak?
+
+A burning plasma makes helium, so the tungsten facing one is tungsten with a bubble
+layer already in it. Coupons pre-exposed to helium in a linear device were mounted on
+DiMES beside coupons that were not, and all of them saw the same DIII-D discharges —
+a design built to isolate what that layer does to erosion, morphology and fuel
+retention. The notebook assembles the dataset and then tries to carry the comparison
+out.
+
+Two of its findings are structural rather than physical. The coupons that entered the
+tokamak carry no imaging of their own, so the record of their initial surface runs
+through a sibling implanted in the same run — a link in the experiment's design, not
+in the sample table. And the helium-free controls do not come back helium-free, which
+narrows the contrast the experiment was built around.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_helium_jupyterhub.ipynb)
+
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
