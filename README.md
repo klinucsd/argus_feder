@@ -108,7 +108,7 @@ principal limitation twice: the dataset is too small to quantify performance, an
 identifying which discharges are relevant for training is a necessary next step.
 They used 26 discharges. In six plain-English questions and no code, ARGUS
 establishes what labels exist and who produced them, characterises the
-distribution of first-ELM times, assembles a candidate cohort of 4,873
+distribution of first-ELM times, assembles a candidate cohort of 4,869
 discharges, interrogates an anomaly in its own data, grounds one case in the raw
 D-alpha signal, and states what the cohort cannot support — including that it
 cannot reproduce the original study, because nothing in the data locates the
