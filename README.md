@@ -253,6 +253,26 @@ narrows the contrast the experiment was built around.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_helium_jupyterhub.ipynb)
 
+### Does helium in the surface make tungsten hold more deuterium, or less?
+
+Whether a helium layer traps fuel or blocks it decides how much tritium a reactor
+wall keeps, so the sign of the effect matters more than its size. The same coupon
+set answers it, and the answer is not one number: the effect reverses between the
+two helium pre-exposure temperatures, and within a single coupon the near-surface
+and the deep measurements disagree about which way it went.
+
+The notebook works through that disagreement rather than around it. Helium at the
+lower temperature raises retention in five of six measurements; helium at the
+higher temperature lowers it under one plasma and raises it under the other. Deep
+deuterium falls in three of four cells, which is what a permeation barrier would
+do, while surface deuterium rises — the fuel that cannot get past the layer stays
+in front of it. The last question asks what the measurements cannot settle, and
+the answer is substantial: one coupon per cell, no thermal desorption, no
+cross-section imaging of the bubble layer, and two helium exposures that differ in
+flux and duration as well as in temperature.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb)
+
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
