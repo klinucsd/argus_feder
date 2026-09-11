@@ -461,6 +461,23 @@ different span at each end, so a caption that fits near the right edge can be
 several decades wide near the left. Keep the long sentences in the answer text,
 where they reflow, and give the figure the short version.
 
+A fourth note names a label that renders an object rather than a value:
+
+```
+save_figure: 3 label(s) contain a Python repr rather than a value (x tick
+label: <bound method NDFrame.sample of sample W-DH...) -- an object reached the
+label where a string was meant. On a pandas row, attribute access returns the
+METHOD for any column whose name collides with one (`sample`, `count`, `min`,
+`max`, `mean`, `sum`, `std`), so use `row["sample"]` rather than `row.sample`,
+then look at the saved file
+```
+
+`row.sample` is `Series.sample` -- the sampling method -- not the sample name,
+and matplotlib formats whatever it is handed, so the figure saves cleanly with
+the repr of a bound method along its axis. Subscript the column instead of
+reaching for it as an attribute whenever the column name could be a method:
+`row["sample"]` is never ambiguous.
+
 Only code running directly in the notebook kernel can use `plt.show()` or
 `display(...)`. When in doubt, save and reference -- that works either way.
 
@@ -587,3 +604,36 @@ distinction the provider made within one quantity, such as a depth band.
 
 A sample with no row for a quantity was not measured for it. That is not a
 zero, and a missing row must never be reported as one.
+
+**A row can also be present and carry no value, and that is the same
+statement.** `values_by_sample()` sets `measured` to False on such an entry
+and leaves `value_num` as None; `observations()` shows it as a row whose
+`value_num` and `value_text` are both empty. It means the delivery names the
+measurement and reports no result for it -- the provider listed the
+measurement and then did not make it, or withdrew it. Write "not measured"
+for that sample and method, and leave it out of any ratio, mean or total.
+
+Read None as the absence of a number, not as the number zero. The distinction
+is the whole content of a reference sample: a coupon that reads a measured
+zero is evidence that the species arrived during the exposure, while a coupon
+that was never measured is evidence of nothing, and a sentence that turns the
+second into the first states as established the very thing it was supposed to
+demonstrate. Check `measured` before writing a number into a sentence:
+
+```python
+v = mat.values_by_sample(names, quantity=q, method=m)
+for n in names:
+    e = v.get(n)
+    if e is None:
+        print(n, "no row -- not measured")
+    elif not e["measured"]:
+        print(n, "row present, no value -- not measured")
+    else:
+        print(n, e["value_num"], e["unit"])
+```
+
+**A number belongs to the method that produced it.** Where the method you
+asked for reports nothing, report that method as not measured and name the
+other method separately with its own value. Substituting a second method's
+number under the first method's name states a measurement that was never
+made, and it is the reader who knows the instruments who will catch it.

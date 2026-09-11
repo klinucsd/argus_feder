@@ -164,6 +164,12 @@ def observations(sample_names=None, quantity=None, method=None, stage=None,
     `quantity`, `method` and `stage` accept a value or a collection; pass what
     `quantities()` reported. `profile` selects depth-resolved rows when True and
     single values when False; None returns both.
+
+    A row carries its value in `value_num` when the quantity is numeric and in
+    `value_text` when it is descriptive. When BOTH are empty the delivery names
+    the measurement and reports no result for it: it was not measured. Report
+    that as not measured. A value of zero is a different statement -- it is a
+    measurement that came back zero -- and only `value_num == 0` says it.
     """
     sql = ["""SELECT s.name AS sample_name, o.stage, o.method, o.quantity, o.qualifier,
                      o.value_num, o.value_std, o.value_text, o.unit,
@@ -188,16 +194,27 @@ def observations(sample_names=None, quantity=None, method=None, stage=None,
 def values_by_sample(sample_names, quantity, method=None, stage=None):
     """One scalar quantity for a GROUP of samples -> {sample: {...}}.
 
-    The shape to compare samples against each other. Samples with no such
-    measurement are absent from the result rather than present with a zero.
+    The shape to compare samples against each other. A sample the delivery
+    never names for this quantity is absent from the result rather than present
+    with a zero.
+
+    A sample that IS present can still carry no value. Each entry has a
+    `measured` flag: True when the delivery reported a result, False when it
+    names the measurement and reports nothing for it. When `measured` is False,
+    `value_num` is None and the sample has no number for this quantity -- say
+    it was not measured, and take no number for it from another method, since
+    a number belongs to the method that produced it. A sample whose `measured`
+    is True and whose `value_num` is 0 is the opposite case: a real measurement
+    that came back zero.
     """
     rows = observations(sample_names, quantity=quantity, method=method,
                         stage=stage, profile=False)
     out = {}
     for r in rows:
-        out.setdefault(r["sample_name"], []).append(
-            {k: r[k] for k in ("method", "stage", "quantity", "qualifier",
-                               "value_num", "value_std", "unit")})
+        entry = {k: r[k] for k in ("method", "stage", "quantity", "qualifier",
+                                   "value_num", "value_std", "unit")}
+        entry["measured"] = r["value_num"] is not None or bool(r.get("value_text"))
+        out.setdefault(r["sample_name"], []).append(entry)
     return {k: (v[0] if len(v) == 1 else v) for k, v in out.items()}
 
 
@@ -749,6 +766,91 @@ def _series_colors(ax):
     return out
 
 
+def _flat_panels(fig):
+    """Panels whose data occupies almost none of their own height.
+
+    Returns [(index, fraction), ...].
+
+    Measured in pixels, so it is indifferent to units and to log scaling: what
+    it asks is simply how much of the drawn panel the drawn data actually uses.
+    A panel using a few percent of its height is blank to a reader however
+    correct its numbers are.
+
+    The usual cause is a shared y axis across panels holding DIFFERENT
+    QUANTITIES -- areal density beside a concentration, say. `sharey=True` is
+    right when every panel measures the same thing in the same unit and the
+    point is to compare their heights; it destroys every panel but the largest
+    when they do not.
+    """
+    out = []
+    for i, ax in enumerate(fig.axes):
+        lo = hi = None
+        def _span(vals):
+            nonlocal lo, hi
+            for v in vals:
+                try:
+                    v = float(v)
+                except Exception:
+                    continue
+                if v != v:                      # NaN
+                    continue
+                lo = v if lo is None else min(lo, v)
+                hi = v if hi is None else max(hi, v)
+        for p in getattr(ax, "patches", ()):
+            try:
+                y0 = p.get_y(); _span((y0, y0 + p.get_height()))
+            except Exception:
+                pass
+        for line in ax.get_lines():
+            try:
+                _span(line.get_ydata())
+            except Exception:
+                pass
+        if lo is None or hi is None:
+            continue
+        try:
+            (_, py0), (_, py1) = ax.transData.transform([(0, lo), (0, hi)])
+            height = float(ax.bbox.height)
+        except Exception:
+            continue
+        if height <= 0:
+            continue
+        frac = abs(py1 - py0) / height
+        if frac < 0.05:
+            out.append((i, frac))
+    return out
+
+
+def _indistinguishable_series(ax):
+    """Labelled lines a legend cannot tell apart: same colour AND same style.
+
+    Returns [(style_description, [label, ...]), ...] for each clash.
+
+    A legend identifies a curve by its colour and its dash pattern, so two
+    curves sharing both are one entry as far as the reader is concerned however
+    carefully they are named. The usual cause is a lookup that silently folds
+    two categories into one -- a two-way choice written for what turns out to
+    be three cases, where the third falls through into the second and is then
+    drawn, and legended, as though it were that.
+    """
+    from matplotlib.colors import to_hex
+    seen = {}
+    for line in ax.get_lines():
+        label = line.get_label()
+        if not label or label.startswith("_"):
+            continue
+        try:
+            key = (to_hex(line.get_color()), str(line.get_linestyle()),
+                   str(line.get_marker()))
+        except Exception:
+            continue
+        seen.setdefault(key, [])
+        if label not in seen[key]:
+            seen[key].append(label)
+    return [("colour %s, style %s" % (k[0], k[1]), v)
+            for k, v in seen.items() if len(v) > 1]
+
+
 def _errorbar_extents(ax):
     """The y range each error bar on an axes actually spans.
 
@@ -778,6 +880,61 @@ def _errorbar_extents(ax):
 # those touching is a crowded axis, not a defect worth a note.
 _LONG_TEXT = 25
 _OVERLAP_FRACTION = 0.10
+
+
+# Fragments that only ever appear when an object was formatted where a string
+# was meant. None of them can occur in a label someone wrote on purpose.
+_REPR_MARKERS = ("<bound method", "<built-in method", "<function",
+                 " object at 0x", "dtype:", "<class '")
+
+
+def _repr_leaks(fig):
+    """Labels that render a Python object instead of a value.
+
+    Returns [(where, text), ...].
+
+    The failure this catches is silent by construction: matplotlib will format
+    whatever it is handed, so a label built from the wrong attribute draws
+    cleanly and is only visibly wrong in the image -- which the writer of the
+    script does not look at. The usual cause is a pandas row, where attribute
+    access resolves to a METHOD for any column whose name collides with one:
+    `row.sample` is `Series.sample` and not the sample name, and the repr of a
+    bound method is what lands on the axis.
+    """
+    out = []
+    for ax in fig.axes:
+        for axis, where in ((getattr(ax, "xaxis", None), "x tick label"),
+                            (getattr(ax, "yaxis", None), "y tick label")):
+            if axis is None:
+                continue
+            try:
+                labels = [t.get_text() for t in axis.get_ticklabels()]
+            except Exception:
+                labels = []
+            for t in labels:
+                if any(m in t for m in _REPR_MARKERS):
+                    out.append((where, t))
+        for getter, where in ((ax.get_title, "title"),
+                              (ax.get_xlabel, "x axis label"),
+                              (ax.get_ylabel, "y axis label")):
+            try:
+                t = getter()
+            except Exception:
+                continue
+            if t and any(m in t for m in _REPR_MARKERS):
+                out.append((where, t))
+        for t in _series_labels(ax):
+            if any(m in t for m in _REPR_MARKERS):
+                out.append(("legend entry", t))
+    for holder in [fig] + list(fig.axes):
+        for txt in getattr(holder, "texts", ()):
+            try:
+                t = txt.get_text()
+            except Exception:
+                continue
+            if any(m in t for m in _REPR_MARKERS):
+                out.append(("annotation", t))
+    return out
 
 
 def _text_collisions(fig):
@@ -882,6 +1039,41 @@ def _figure_notes(fig):
             "to a positive floor, or report the uncertainties in a table and "
             "describe the figure as showing values only"
             % (hidden_low + hidden_high, bars, hidden_low, hidden_high))
+    flat = _flat_panels(fig)
+    if flat:
+        notes.append(
+            "%d panel(s) draw their data across under 5%% of their own height "
+            "(%s) -- the numbers are there but the panel reads as empty. Panels "
+            "sharing a y axis must hold the SAME quantity in the same unit; "
+            "where they hold different ones, give each its own axis (drop "
+            "sharey) or plot the ratio to a common reference instead"
+            % (len(flat), ", ".join("panel %d at %.1f%%" % (i, 100 * f)
+                                    for i, f in flat[:4])))
+    clashes = []
+    for ax in axes:
+        clashes.extend(_indistinguishable_series(ax))
+    if clashes:
+        shown = "; ".join("%s -> %s" % (k, ", ".join(v[:3]))
+                          for k, v in clashes[:2])
+        notes.append(
+            "%d group(s) of labelled curves share a colour AND a line style, so "
+            "the legend names them but the reader cannot tell them apart (%s) -- "
+            "a lookup that assigns the style has folded two categories into one, "
+            "which is what a two-way choice does when there are three cases; give "
+            "every category its own colour or dash pattern and check the count "
+            "of distinct styles against the count of categories"
+            % (len(clashes), shown))
+    leaks = _repr_leaks(fig)
+    if leaks:
+        where = "; ".join("%s: %s" % (w, _first_words(t, 8)) for w, t in leaks[:3])
+        notes.append(
+            "%d label(s) contain a Python repr rather than a value (%s) -- an "
+            "object reached the label where a string was meant. On a pandas "
+            "row, attribute access returns the METHOD for any column whose "
+            "name collides with one (`sample`, `count`, `min`, `max`, `mean`, "
+            "`sum`, `std`), so use `row[\"sample\"]` rather than "
+            "`row.sample`, then look at the saved file"
+            % (len(leaks), where))
     hits = _text_collisions(fig)
     if hits:
         pairs = "; ".join('"%s" over "%s"' % (_first_words(a), _first_words(b))
