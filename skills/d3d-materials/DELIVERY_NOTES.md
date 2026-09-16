@@ -73,6 +73,27 @@ hydrogen and deuterium by ERDA on the three coupons that never entered DIII-D
 were never measured, though the sheet shows zeros. Those rows are already null in
 the lakehouse and `values_by_sample()` reports them with `measured` set to False.
 
+### Surface carbon, and a header that lies about its own units
+
+Surface carbon is not in the lakehouse tables. It is only in the workbook, and
+it appears twice:
+
+- **Summary, column W.** All nine samples, already in atoms per square
+  centimetre. The header above it reads `(1e16 cm^-2)`, and that label is
+  stale: the values beneath it have already been scaled. `1.45e+16` means
+  1.45e16 atoms cm^-2. **Do not multiply it by 1e16.**
+- **The NRA sheet, the `C surface` row.** The same nine values, written as
+  `1.45`, `3.31` and so on, genuinely in units of 1e16 cm^-2 as that sheet's
+  own note at the top says. Here the scale does have to be applied.
+
+Both routes give the same answer when read correctly. Take the Summary column
+and use it as it stands, or take the NRA row and multiply by 1e16. Getting this
+wrong is a factor of 1e16, which is large enough to be obvious and has been
+gotten wrong before.
+
+This is the one quantity where the NRA sheet is worth reading for a value
+rather than a note, because it is the plainer of the two representations.
+
 ### Not part of the dataset
 
 - Columns carrying `#DIV/0!`.
