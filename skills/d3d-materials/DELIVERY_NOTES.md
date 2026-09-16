@@ -23,15 +23,25 @@ saves is work that produces a correct answer to a question nobody asked.
 
 ## Delivery `2026-09-04_amy`
 
-### The workbook has one authoritative sheet
+### One sheet is authoritative for values. The others still carry writing.
 
-In `erda_nra_data.xlsx`, use the **Summary** sheet. The `ERDA`, `NRA` and
-`Sample naming` sheets are superseded: the provider has withdrawn the values in
-them and describes them as obsolete. Do not read them, and do not reconcile them
-against Summary.
+In `erda_nra_data.xlsx`, **take every number from the Summary sheet.** The
+provider has withdrawn the values in the `ERDA`, `NRA` and `Sample naming`
+sheets and describes those sheets as obsolete. Do not read a value from them,
+and do not reconcile them against Summary or report a difference between them.
 
-One exception. The **LAMS** worksheet's data table is correct, and its contents
-are not reproduced in Summary, so read that sheet when you need LAMS values.
+Two things in those sheets are not withdrawn and are worth reading:
+
+- **The LAMS sheet's data table**, which is correct and is not reproduced in
+  Summary. Take LAMS values from there.
+- **Notes, headers and analyst commentary anywhere in the workbook.** What each
+  method measures, which reaction a signal comes from, what the analyst concluded
+  when they looked at their own results: none of that exists in Summary, and it
+  is often the only record of it. Read it, quote it, and attribute it to the
+  sheet it is actually in.
+
+The rule is about numbers, not about sheets. A withdrawn sheet's value is
+superseded; a withdrawn sheet's sentence is still the only copy.
 
 ### Sample names need no reconciliation
 
