@@ -101,6 +101,23 @@ rather than a note, because it is the plainer of the two representations.
 - `SiN`, which is a calibration standard used by the measuring laboratory rather
   than one of the experiment's samples.
 
+### How much to trust each method
+
+The provider ranks them, and the ranking is not derivable from the data:
+
+- **NRA is the most trustworthy** of the three. It carries no uncertainty
+  column at all in this delivery, so its reliability cannot be read off the
+  numbers and must not be inferred from their absence.
+- **ERDA** carries an uncertainty and it is small.
+- **LAMS is experimental.** Its uncertainties are large, often exceeding the
+  value itself. Treat a LAMS number as indicative, say so when quoting one, and
+  do not let it outweigh NRA or ERDA where they disagree.
+
+When the methods disagree, lead with NRA and say what the others show rather
+than averaging them or picking the one that suits the argument. Where only LAMS
+covers something, that is still worth reporting, with its uncertainty stated in
+the same sentence as the value.
+
 ### Known absences
 
 Sample temperature during the DIII-D exposure was not measured, neither bulk nor
