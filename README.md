@@ -210,10 +210,10 @@ before the current quench, for C-Mod shots that disrupted out of flat-top,
 against the flat-top voltage of shots that did not. This notebook rebuilds it
 from a stored C-Mod index, produced by the same MIT-PSFC code as the DIII-D one.
 C-Mod ran its current in both directions, so each shot's voltage has to be signed
-by its own current first — eighteen of the fifty-three ran reversed.
+by its own current first — thirty-five of the ninety-four ran reversed.
 
 The second question is about limits. The pre-quench shift is modest, the large
-jump in the final two milliseconds is the current quench itself rather than a
+jump in the final milliseconds is the current already collapsing rather than a
 warning of it, and the index holds the shots its provider published times for,
 so nothing here describes how often C-Mod disrupts.
 
