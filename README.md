@@ -142,9 +142,10 @@ intermittent rise on about a tenth of ELMs against a false-alarm null.
 
 ## Disruption studies
 
-Working from a stored disruption index, from an introduction through competency
-questions to a research pass. The index files these notebooks read are provided
-separately rather than held in this repo.
+Working from stored disruption indexes — DIII-D and Alcator C-Mod — from an
+introduction through competency questions to a research pass, and a
+reproduction of a published figure. The index files these notebooks read are
+provided separately rather than held in this repo.
 
 ### Getting started with DIII-D disruption data
 
@@ -199,6 +200,24 @@ apparent discriminators that are real physics from those that are artifacts of h
 the disruption label is defined.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_research_jupyterhub.ipynb)
+
+### Loop voltage before a disruption, in Alcator C-Mod
+
+A disrupting plasma cools before it loses its current, and the loop voltage is
+where the rising resistance shows up. Figure 1 of Montes et al, *Nuclear Fusion*
+**59** 096015 (2019) puts that on one panel: loop voltage over the final 250 ms
+before the current quench, for C-Mod shots that disrupted out of flat-top,
+against the flat-top voltage of shots that did not. This notebook rebuilds it
+from a stored C-Mod index, produced by the same MIT-PSFC code as the DIII-D one.
+C-Mod ran its current in both directions, so each shot's voltage has to be signed
+by its own current first — eighteen of the fifty-three ran reversed.
+
+The second question is about limits. The pre-quench shift is modest, the large
+jump in the final two milliseconds is the current quench itself rather than a
+warning of it, and the index holds the shots its provider published times for,
+so nothing here describes how often C-Mod disrupts.
+
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_cmod_vloop_disruption_jupyterhub.ipynb)
 
 ## Plasma-facing materials
 
