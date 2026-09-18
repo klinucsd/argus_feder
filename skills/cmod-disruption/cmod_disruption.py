@@ -295,6 +295,57 @@ def fetch_samples(shot, columns=None, cross_device=False, sign_by_ip=()):
         (shot,))
 
 
+def flattop_disruptions():
+    """Every disruptive shot, with both flat-top criteria side by side.
+
+    "Shots that disrupted during flat-top" has two defensible readings, and they
+    do not return the same shots:
+
+      * `flattop_at_disruption` -- the phase of the sample nearest the
+        disruption is flat-top. The strict reading.
+      * `ms_flattop_to_disrupt` -- how long after the last flat-top sample the
+        disruption came. Keeping shots where this is inside the analysis window
+        is the loose reading.
+
+    **The strict reading is usually the wrong one for a windowed figure**, and
+    not by a little. A phase classifier labels a disrupting shot's final
+    milliseconds as ramp-down *because* the current is already collapsing, so
+    asking what phase the shot was in at the instant it disrupted discards shots
+    that held flat-top right up to the onset. The two readings can differ by
+    enough to change the answer, not only the count.
+
+    So pick the reading deliberately, filter on the column you meant, and say in
+    the answer which one you used and how many shots it selected. Returns one
+    row per disruptive shot:
+
+        shot, t_disrupt, t_last_flattop, ms_flattop_to_disrupt,
+        phase_at_disruption, flattop_at_disruption, n_provider_countdown_rows
+
+    `ms_flattop_to_disrupt` is None for a shot that never reached flat-top; that
+    is a result, not a gap. `n_provider_countdown_rows` of 0 means the provider
+    left this shot's `time_until_disrupt` column empty -- see
+    `window_before_disruption`, which does not depend on it.
+    """
+    rows = _query(
+        "SELECT s.shot, s.t_disrupt,"
+        " MAX(CASE WHEN d.time_domain = 2 THEN d.\"time\" END) AS t_last_flattop,"
+        " (array_agg(d.time_domain ORDER BY abs(d.\"time\" - s.t_disrupt))"
+        "   FILTER (WHERE d.time_domain IS NOT NULL))[1] AS phase_at_disruption,"
+        " COUNT(d.time_until_disrupt) AS n_provider_countdown_rows"
+        " FROM disruption.cmod_shots s"
+        " JOIN disruption.cmod_samples d ON d.shot = s.shot"
+        " WHERE s.disrupted <> 0"
+        " GROUP BY s.shot, s.t_disrupt ORDER BY s.shot")
+    for r in rows:
+        ph = r["phase_at_disruption"]
+        r["phase_at_disruption"] = PHASE.get(int(ph), None) if ph is not None else None
+        r["flattop_at_disruption"] = r["phase_at_disruption"] == "flat-top"
+        lf, td = r["t_last_flattop"], r["t_disrupt"]
+        r["ms_flattop_to_disrupt"] = (
+            (td - lf) * 1000.0 if lf is not None and td is not None else None)
+    return rows
+
+
 def window_before_disruption(shots, ms, columns=("v_loop",), sign_by_ip=()):
     """Samples within `ms` milliseconds of the current quench, windowed in SQL.
 
@@ -309,22 +360,44 @@ def window_before_disruption(shots, ms, columns=("v_loop",), sign_by_ip=()):
     quarter of that window's samples disappear, every remaining number stays
     self-consistent, and the statistic shifts by a factor of two.
 
-    Returns one row per sample with `shot`, `time`, `time_until_disrupt` and the
-    requested columns, plus `<name>_signed` for anything in `sign_by_ip`.
+    **The countdown is computed here as `t_disrupt - time`, not read from the
+    provider's per-sample column.** The provider leaves that column empty on
+    some shots while still publishing a disruption time for them, so a window
+    keyed on it drops those shots and reports nothing at all for them -- which
+    reads as "this shot has no samples near its disruption" rather than as
+    "this column was not filled in". Deriving it uses the disruption time the
+    index does carry. Where the provider's column exists the two agree.
+
+    The subtraction needs a tolerance at zero, and this is the same trap as the
+    rounded CSV wearing different clothes. The sample sitting exactly at the
+    disruption has `time == t_disrupt`, and the difference of two stored floats
+    comes out as a tiny *negative* number rather than zero, so a `>= 0` test
+    discards it. Those are the quench-instant samples -- the largest values in
+    the whole window -- so losing them moves the final bin a long way while
+    every surviving number stays consistent. The bound below is one microsecond and
+    the returned value is clamped at zero.
+
+    Returns one row per sample with `shot`, `time`, `time_until_disrupt` (the
+    derived value the window was applied to) and the requested columns, plus
+    `<name>_signed` for anything in `sign_by_ip`.
     """
     shots = list(shots)
-    cols = ['d."shot"', 'd."time"', 'd.time_until_disrupt'] + ['d."%s"' % c for c in columns]
+    cols = ['d."shot"', 'd."time"',
+            'GREATEST(sh.t_disrupt - d."time", 0) AS time_until_disrupt']
+    cols += ['d."%s"' % c for c in columns]
     for c in sign_by_ip:
         if c not in columns:
             raise ValueError("sign_by_ip names %s, which is not in columns" % c)
         cols.append('d."%s" * (CASE WHEN x.mean_ip < 0 THEN -1 ELSE 1 END) AS "%s_signed"' % (c, c))
     return _query(
         "SELECT %s FROM disruption.cmod_samples d"
+        " JOIN disruption.cmod_shots sh ON sh.shot = d.shot"
         " JOIN (SELECT shot, AVG(ip) AS mean_ip FROM disruption.cmod_samples"
         "        GROUP BY shot) x ON x.shot = d.shot"
-        " WHERE d.shot IN (?) AND d.time_until_disrupt >= 0"
-        "   AND d.time_until_disrupt <= ?"
-        " ORDER BY d.shot, d.time_until_disrupt" % ", ".join(cols),
+        " WHERE d.shot IN (?) AND sh.t_disrupt IS NOT NULL"
+        "   AND (sh.t_disrupt - d.\"time\") >= -1e-6"
+        "   AND (sh.t_disrupt - d.\"time\") <= ?"
+        " ORDER BY d.shot, GREATEST(sh.t_disrupt - d.\"time\", 0)" % ", ".join(cols),
         (shots, ms / 1000.0))
 
 

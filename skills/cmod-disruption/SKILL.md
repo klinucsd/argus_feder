@@ -147,6 +147,33 @@ the device-neutral identity of the quantity and is the right thing to quote when
 a question is about what a parameter means rather than what this device called
 it.
 
+## "Disrupted during flat-top" is two different selections
+
+```python
+cmod.flattop_disruptions()   # every disruptive shot, with both criteria
+```
+
+Each row carries `flattop_at_disruption` (the phase of the sample nearest the
+disruption is flat-top) and `ms_flattop_to_disrupt` (how long after the last
+flat-top sample the disruption came). Filter on the one you mean.
+
+**Prefer the window criterion for a windowed figure.** A phase classifier labels
+a disrupting shot's final milliseconds as ramp-down *because* the current is
+already collapsing, so asking what phase the shot was in at the instant it
+disrupted discards shots that held flat-top right up to the onset. Keeping every
+shot whose last flat-top sample falls inside the analysis window is the reading
+that matches what a reader of the figure means. The two can differ by enough to
+change the answer, not just the count.
+
+**When a requested count and your count disagree, reconcile before computing.**
+Write the candidate selections as counting queries, compare them against the
+number you were given, and report which definition reproduces it. A definitional
+gap is recoverable from the data in one pass; discovering it after the analysis
+is built costs the analysis.
+
+Whichever you choose, name the criterion and the shot count in the answer, so a
+reader can tell which of the two they are looking at.
+
 ## Quoting a statistic over part of the data
 
 Sampling here is uneven and tightens sharply near a disruption, so a statistic
