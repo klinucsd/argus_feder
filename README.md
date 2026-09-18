@@ -276,21 +276,22 @@ narrows the contrast the experiment was built around.
 
 Whether a helium layer traps fuel or blocks it decides how much tritium a reactor
 wall keeps, so the sign of the effect matters more than its size. The same coupon
-set answers it, and the answer is not one number: the effect reverses between the
-two helium pre-exposure temperatures, and within a single coupon the near-surface
-and the deep measurements disagree about which way it went.
+set answers it, and the answer is not one number: helium at 800 K lowers retention
+under an ELMy H-mode plasma and raises it under L-mode, while helium at 600 K
+raises it under both.
 
-The notebook works through that disagreement rather than around it. Helium at the
-lower temperature raises retention in five of six measurements; helium at the
-higher temperature lowers it under one plasma and raises it under the other. Deep
-deuterium falls in three of four cells, which is what a permeation barrier would
-do, while surface deuterium rises — the fuel that cannot get past the layer stays
-in front of it. The last question asks what the measurements cannot settle, and
-the answer is substantial: one coupon per cell, no thermal desorption, no
-cross-section imaging of the bubble layer, and two helium exposures that differ in
-flux and duration as well as in temperature.
+Three further questions test how far that survives. The three measurement
+techniques disagree in sign in L-mode, because each reaches a different depth and
+none of them reaches far. L-mode retains more deuterium than H-mode in every
+matched pair, but the two campaigns differ in six parameters at once, so the
+confinement regime cannot be separated from what changed alongside it. And the
+closing question finds that once the co-retained protium is counted — a channel
+only one of the three techniques reports — part of the apparent effect on
+deuterium is exchange between isotopes rather than a change in how much the
+tungsten holds.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb)
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb)
+<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb -->
 
 ## Running on JupyterHub
 
