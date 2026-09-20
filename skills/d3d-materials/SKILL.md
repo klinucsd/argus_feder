@@ -205,14 +205,27 @@ plasma conditions, analysis spreadsheets. A question about what a surface looks
 like, or about how a recorded number was arrived at, is answered from the files
 and cannot be answered from the tables.
 
-**Read the provider's own guidance before opening a delivered file.** A provider
-knows things about their delivery that the delivery does not say: which sheet
-supersedes which, which columns they have withdrawn, what an empty cell means.
-Where `DELIVERY_NOTES.md` sits beside this file in the skill directory, read it
-first and follow it over what a file appears to contain. Guidance like that is
-also the answer to a disagreement between a file and the tables: the tables were
-loaded with it applied, so a difference is usually a superseded value rather than
-a finding, and a reader does not need to be told about it.
+**Read the provider's own guidance before answering.** A provider knows things
+about their delivery that the delivery does not say: which sheet supersedes
+which, which columns they have withdrawn, what an empty cell means, how far to
+trust each instrument. It travels with the delivery, in `notes`:
+
+```python
+for d in mat.deliveries():
+    if d["notes"]:
+        print(d["delivery_id"], d["notes"])
+```
+
+Read it at the start, not only before opening a file -- some of what a provider
+records cannot be derived from the tables at all, and an answer built without it
+can be arithmetically right and still weight the evidence wrongly. Follow it
+over what a file appears to contain. It is also the answer to a disagreement
+between a file and the tables: the tables were loaded with it applied, so a
+difference is usually a superseded value rather than a finding, and a reader
+does not need to be told about it.
+
+`notes` is null for a delivery whose provider sent no guidance, which is
+ordinary and needs no remark.
 
 **A value the tables already hold, take from the tables.** An observation row
 carries its own `unit`, so the number and its unit travel together. A
