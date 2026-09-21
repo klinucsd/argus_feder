@@ -104,16 +104,33 @@ def bearer_token():
     An expired env token now steps aside for a valid file token; a valid one
     still wins outright, so an explicit override behaves as before.
     """
+    # Two passes, not one. An undecodable token is still trusted -- this cannot
+    # judge it, and refusing would break any non-JWT token the service accepts
+    # -- but it no longer WINS over a token that demonstrably decodes and is
+    # still valid. First-match-wins meant a five-character placeholder left in
+    # an earlier variable shadowed a good JWT in a later one, presenting as an
+    # authentication failure with a valid token already in the environment.
+    # This is the same "best candidate, not first candidate" rule the file
+    # handling below has always used.
+    #
+    # Order within each pass is preserved, so an explicit override in the
+    # earliest variable still wins whenever it is usable.
+    undecodable = None
     for var in _TOKEN_ENV:
         v = os.environ.get(var)
-        if v and v.strip():
-            v = v.strip()
-            exp = _expiry(v)
-            # Undecodable expiry -> trust it, as before: this cannot judge it,
-            # and refusing would break any non-JWT token the service accepts.
-            if exp is None or exp > time.time():
-                return v
+        if not (v and v.strip()):
+            continue
+        v = v.strip()
+        exp = _expiry(v)
+        if exp is None:
+            if undecodable is None:
+                undecodable = v
+        elif exp > time.time():
+            return v
+        else:
             _EXPIRED_ENV.append(var)
+    if undecodable is not None:
+        return undecodable
 
     found = []
     for path in _TOKEN_FILES:

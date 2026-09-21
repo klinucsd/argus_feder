@@ -172,14 +172,26 @@ twenty shots balanced ten and ten is a constructed slice, not a sample.
 ### Answering GA's disruption competency questions
 
 General Atomics' competency-question set splits into an ELM half and a
-disruption half; this works through the disruption half (Q14–Q27) against the
-same index. Some questions are answerable now — which pipeline produced a label
-and at what commit, which quantities are disruption precursors and in what
-units, whether the two disruption indicators agree. Some are answerable for one
-pipeline only, because GA's questions assume three and we have run one. And two
-are answered correctly by refusing: a campaign disruption rate, which this slice
-cannot support, and a question about discharge phase, where the column that
-should answer it is constant for every row because of an upstream unit bug.
+disruption half; this works through the disruption half (Q14–Q27). Some
+questions are answerable now — which pipeline produced a label and at what
+commit, which quantities are disruption precursors and in what units, whether
+the two disruption indicators agree. Some are answerable for one pipeline only,
+because GA's questions assume three and we have run one. And a campaign
+disruption rate is answered correctly by refusing: twenty shots balanced ten
+and ten is a constructed slice, not a sample.
+
+An Alcator C-Mod index has since been added, built by the same code, and it
+moves the line. The discharge phase at each disruption — which DIII-D cannot
+report, because a programmed current recorded in the wrong unit leaves the
+column meant to answer it constant on every row — C-Mod resolves for all but
+one of its disrupted shots. That same unit error turns out to be what makes two
+identically named columns differ between the machines by a factor of a million.
+Two further questions ask what the machines share, and the more interesting
+answer is that their indexes disagree with themselves in opposite directions:
+on one the indicators dispute whether a shot disrupted, on the other whether
+the data exist. A second device is not a second pipeline, though — both indexes
+come from one release of one code, so agreement between them is evidence about
+the code rather than about the plasma.
 
 [![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_disruption_competency_jupyterhub.ipynb)
 <!-- COLAB TEMPORARILY DISABLED [![Open in Colab](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/colab-badge.svg)](https://colab.research.google.com/github/klinucsd/argus_feder/blob/main/examples/colab/argus_feder_disruption_competency_colab.ipynb) -->
