@@ -62,6 +62,26 @@ def shot_summary(shot):
     return rows[0] if rows else None
 
 
+def shot_summaries(shots):
+    """SUMMARIES rows for MANY shots in ONE query, keyed by shot.
+
+    The batch form of `shot_summary()`. A loop over the single-shot form costs
+    one HTTP round trip per shot, which turns a cohort question into hundreds
+    of requests; this is a single range query filtered in Python, so the cost
+    does not grow with the size of the list.
+
+    Shots with no SUMMARIES row are simply absent from the result -- check with
+    `in` rather than assuming every requested shot comes back.
+    """
+    shots = sorted(set(shots))
+    if not shots:
+        return {}
+    rows = query_d3drdb("SELECT * FROM SUMMARIES WHERE shot BETWEEN ? AND ?",
+                        (shots[0], shots[-1]))
+    want = set(shots)
+    return {r["shot"]: r for r in rows if r["shot"] in want}
+
+
 def _fmt(value):
     """Format one d3drdb value for an answer, without inventing precision."""
     if value is None:

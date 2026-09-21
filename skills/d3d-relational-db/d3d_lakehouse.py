@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import time
 import urllib.error
 import urllib.request
 
@@ -50,6 +52,10 @@ _TOKEN_ENV = ("FEDER_API_TOKEN", "FDP_TOKEN", "BEARER_TOKEN")
 # Token files that exist but could not be read, so a 401 can say so
 # instead of reporting "no token".
 _UNREADABLE = []
+
+# Env vars holding an EXPIRED token, recorded so a 401 can name the real cause
+# instead of leaving the reader hunting a token that is present and valid.
+_EXPIRED_ENV = []
 
 _TOKEN_FILES = (
     "~/.fdp/token",
@@ -79,19 +85,35 @@ def _expiry(token):
 def bearer_token():
     """The FDP token to present, or None. Never logged, never in error text.
 
-    An environment variable wins outright. Otherwise every candidate FILE is
-    read and the one expiring LATEST is used, rather than the first one found.
+    An environment variable wins -- but only if it has not EXPIRED. Otherwise
+    every candidate FILE is read and the one expiring LATEST is used, rather
+    than the first one found.
 
     That matters on JupyterHub, where two copies routinely exist: `~/.fdp/token`
     is what Pelican reads and is wiped by a pod restart, while the copy under
     persistent storage survives. Taking the first would mean a stale leftover in
     `~/.fdp/token` shadowing a freshly renewed token sitting right beside it --
     presenting as "the database rejected my token" with a good one on disk.
+
+    The expiry check on the env var closes the same hole one level up, and it
+    is not hypothetical: BEARER_TOKEN is populated at kernel start from
+    `~/.fdp/token`, so a pod whose ephemeral copy had gone stale exported an
+    EXPIRED token into the environment, where it shadowed the valid one in
+    persistent storage -- the precise failure this function's file handling was
+    written to prevent, arriving by the one route that skipped the check.
+    An expired env token now steps aside for a valid file token; a valid one
+    still wins outright, so an explicit override behaves as before.
     """
     for var in _TOKEN_ENV:
         v = os.environ.get(var)
         if v and v.strip():
-            return v.strip()
+            v = v.strip()
+            exp = _expiry(v)
+            # Undecodable expiry -> trust it, as before: this cannot judge it,
+            # and refusing would break any non-JWT token the service accepts.
+            if exp is None or exp > time.time():
+                return v
+            _EXPIRED_ENV.append(var)
 
     found = []
     for path in _TOKEN_FILES:
@@ -118,6 +140,33 @@ def bearer_token():
 
 class LakehouseError(RuntimeError):
     """The lakehouse could not answer. The message says why, in those terms."""
+
+
+class _RowKeys:
+    """Keys view for `Row`: iterates the real names, matches case-insensitively."""
+
+    __slots__ = ("_row",)
+
+    def __init__(self, row):
+        self._row = row
+
+    def __iter__(self):
+        return iter(dict.keys(self._row))
+
+    def __len__(self):
+        return dict.__len__(self._row)
+
+    def __contains__(self, key):
+        return key in self._row          # Row.__contains__, case-insensitive
+
+    def __eq__(self, other):
+        try:
+            return set(self) == set(other)
+        except TypeError:
+            return NotImplemented
+
+    def __repr__(self):
+        return "dict_keys(%r)" % (list(self),)
 
 
 class Row(dict):
@@ -152,6 +201,22 @@ class Row(dict):
         except KeyError:
             return default
 
+    def keys(self):
+        """The real column names, but membership matches in any case.
+
+        `.keys()` used to hand back a plain dict view, so `"KAPPA" in
+        r.keys()` was False while `r["KAPPA"]`, `"KAPPA" in r` and
+        `r.get("KAPPA")` all worked. That one inconsistent path is enough to
+        make an agent conclude a documented column does not exist -- observed:
+        it decided "some column names in the skill doc don't exist", then
+        patched its script three times to work around a column that was there
+        the whole time.
+
+        Iteration still yields the names the database actually returned, so
+        anything printing a row shows the real (lowercase) names.
+        """
+        return _RowKeys(self)
+
 
 def endpoint():
     """Base URL of the lakehouse API, without a trailing slash."""
@@ -176,6 +241,16 @@ def _post(path, payload):
         except Exception:                                        # noqa: BLE001
             pass
         if e.code == 401:
+            if _EXPIRED_ENV:
+                raise LakehouseError(
+                    f"the lakehouse rejected this request. "
+                    f"{', '.join(_EXPIRED_ENV)} holds an EXPIRED token and was "
+                    f"skipped; no valid token was found in "
+                    f"{', '.join(_TOKEN_FILES)} either. On JupyterHub "
+                    f"BEARER_TOKEN is set at kernel start from ~/.fdp/token, so "
+                    f"refresh that file and restart the kernel (or call "
+                    f"reload_pelican()) -- setting the file alone leaves the "
+                    f"stale value in the environment.") from None
             if _UNREADABLE:
                 raise LakehouseError(
                     f"the lakehouse rejected this request, and a token file "
@@ -208,19 +283,110 @@ def _post(path, payload):
             f"$FEDER_API_TIMEOUT.") from None
 
 
-def query(sql, params=(), limit=MAX_ROWS):
+# --------------------------------------------------------------------------
+# Result memo
+# --------------------------------------------------------------------------
+# Every skill here is READ-ONLY against a service that does not change while a
+# script runs, and the agent reliably writes loops over shots or times. Those
+# loops re-ask identical questions: `compare_on_shot()` issues 17 queries per
+# call, `elm_statistics()` nine, and a per-shot helper in a comprehension
+# repeats all of them per iteration. Four separate cells stalled on exactly
+# that shape in one day -- 6,001 calls for a 1 ms timeline, 7,000 for a range
+# membership test -- each looking hung because output stays buffered.
+#
+# Memoising identical (sql, params) pairs removes the whole class, including
+# from agent-written raw SQL, without the agent having to know anything. It is
+# deliberately NOT a correctness shortcut: the cap keeps memory bounded, large
+# results are not retained, and `clear_cache()` exists for the case where new
+# data is ingested inside a live session.
+_QUERY_CACHE = {}
+_CACHE_MAX_ENTRIES = 256
+_CACHE_MAX_ROWS = 5000
+
+
+def clear_cache():
+    """Forget memoised query results. Call after ingesting new data."""
+    _QUERY_CACHE.clear()
+
+
+def cache_info():
+    """(entries, cap) -- for checking the memo is behaving."""
+    return len(_QUERY_CACHE), _CACHE_MAX_ENTRIES
+
+
+def _expand_sequences(sql, params):
+    """Expand a sequence parameter into one placeholder per element.
+
+    `query("... WHERE shot IN (?)", (shots,))` becomes
+    `... WHERE shot IN (?,?,?)` with the shots flattened alongside.
+
+    This exists so that asking about many shots has an obvious one-query
+    shape. Without it the natural thing to write is a loop, and a loop is one
+    HTTP round trip per shot -- 300 of them on one observed cell, against a
+    single query that answered the same question in one.
+
+    Untouched unless a parameter really is a non-string sequence, so every
+    existing query takes exactly the path it took before.
+    """
+    seqs = (list, tuple, set, frozenset, range)
+    if not params or not any(isinstance(p, seqs) for p in params):
+        return sql, params
+
+    holes = list(re.finditer(r"\?|%s", sql))
+    if len(holes) != len(params):
+        # Placeholder count and parameter count disagree -- let the service
+        # report it rather than guessing which is which here.
+        return sql, params
+
+    out, cursor, flat = [], 0, []
+    for hole, p in zip(holes, params):
+        out.append(sql[cursor:hole.start()])
+        token = hole.group(0)
+        if isinstance(p, seqs):
+            vals = list(p)
+            if not vals:
+                # `IN ()` is invalid SQL everywhere; NULL matches nothing,
+                # which is exactly what an empty list means.
+                out.append("NULL")
+            else:
+                out.append(",".join([token] * len(vals)))
+                flat.extend(vals)
+        else:
+            out.append(token)
+            flat.append(p)
+        cursor = hole.end()
+    out.append(sql[cursor:])
+    return "".join(out), tuple(flat)
+
+
+def query(sql, params=(), limit=MAX_ROWS, cache=True):
     """Run one read-only SELECT and return a list of Row.
 
     `sql` may use either `?` or `%s` placeholders; the service accepts both, and
     treats LIKE case-insensitively as SQLite does. Any rewrite it applies is
     reported and can be inspected with `last_compat_notes()`.
+
+    Identical (sql, params) pairs are served from an in-process memo; pass
+    `cache=False` to force a round trip, or call `clear_cache()`.
     """
+    global _LAST_NOTES
+    sql, params = _expand_sequences(sql, params)
+    key = None
+    if cache:
+        try:
+            key = (sql, tuple(params), int(limit))
+        except TypeError:
+            key = None                      # unhashable params -> just fetch
+        if key is not None and key in _QUERY_CACHE:
+            rows, notes = _QUERY_CACHE[key]
+            _LAST_NOTES = list(notes)
+            return [Row(r.items()) for r in rows]
+
     payload = {"sql": sql, "limit": int(limit)}
     if params:
         payload["params"] = list(params)
     out = _post("/query", payload)
 
-    global _LAST_NOTES
     _LAST_NOTES = out.get("compat_notes") or []
 
     if out.get("truncated"):
@@ -231,7 +397,15 @@ def query(sql, params=(), limit=MAX_ROWS):
             f"result.")
 
     names = [c["name"] for c in out.get("columns", [])]
-    return [Row(zip(names, r)) for r in out.get("rows", [])]
+    rows = [Row(zip(names, r)) for r in out.get("rows", [])]
+
+    # Small results only: a memo that holds a million sample rows would trade
+    # one problem for a worse one.
+    if key is not None and len(rows) <= _CACHE_MAX_ROWS:
+        if len(_QUERY_CACHE) >= _CACHE_MAX_ENTRIES:
+            _QUERY_CACHE.pop(next(iter(_QUERY_CACHE)))
+        _QUERY_CACHE[key] = (rows, list(_LAST_NOTES))
+    return [Row(r.items()) for r in rows]
 
 
 _LAST_NOTES = []

@@ -57,8 +57,8 @@ import sys, os
 sys.path.insert(0, os.path.expanduser("~/.deepagents/agent/skills/d3d-disruption"))
 from d3d_disruption import (
     index_info, parameters, parameter_info, unusable_parameters,
-    shots, is_indexed, shot_summary,
-    fetch_samples, disruption_label, label_disagreements,
+    shots, is_indexed, shot_summary, shot_summaries,
+    fetch_samples, disruption_label, disruption_labels, label_disagreements,
     disruption_rate,
     ShotNotInIndex, UnusableParameter, PopulationClaimUnsupported,
 )
@@ -143,6 +143,66 @@ err = [r["ip_rt"] - r["ip_prog_rt"] for r in rows]     # A
 ```
 
 Deriving is preferable to quoting a column whose caveat you have not read.
+
+## The database is PostgreSQL -- what that changes
+
+The service runs PostgreSQL. A thin compatibility layer at the boundary absorbs
+the SQLite spellings that translate exactly, so these all work as written and
+need no thought:
+
+| you write | why it works |
+|---|---|
+| `?` placeholders | rewritten to `%s` |
+| `LIKE 'FS04%'` | rewritten to `ILIKE`, keeping SQLite's case-insensitive match |
+| `IFNULL(x, 0)` | renamed to `COALESCE` |
+| `ROUND(x, 2)` on a float | an overload is installed for it |
+
+Everything else is PostgreSQL, and these four are the ones that actually cost
+retries. Each was confirmed against the live service:
+
+| this fails | error | write instead |
+|---|---|---|
+| `GROUP_CONCAT(sig, ',')` | `function group_concat(text, unknown) does not exist` | `STRING_AGG(sig, ',')` |
+| a SELECT alias in `HAVING` | `column "n" does not exist` | wrap in a subquery |
+| a SELECT alias in `WHERE` | `column "r" does not exist` | wrap in a subquery |
+| an aggregate in `GROUP BY` | `aggregate functions are not allowed in GROUP BY` | wrap in a subquery |
+
+`GROUP_CONCAT` is not auto-translated on purpose: `STRING_AGG` takes a
+delimiter argument, so a silent rewrite would have to invent one, and a
+rewrite that changes meaning is worse than an error naming the function.
+
+The subquery form covers three of the four:
+
+```sql
+SELECT * FROM (
+  SELECT shot, COUNT(*) AS n FROM signal_availability GROUP BY shot
+) t WHERE n > 1
+```
+
+**Every selected column must be grouped or aggregated.** `SELECT shot, signal,
+COUNT(*) ... GROUP BY shot` fails with `column "signal" must appear in the
+GROUP BY clause`; SQLite would have picked an arbitrary row. Per-shot constants
+look redundant in a `GROUP BY` and still have to be listed.
+
+## More than one shot? Use the batch call
+
+Every helper here talks to a service over HTTP, so a single-shot helper costs
+one round trip. A loop over a shot list turns one question into hundreds of
+requests -- the difference between a second and several minutes, and the cell
+looks hung while it happens because output is buffered until the script ends.
+
+| one shot | many shots |
+|---|---|
+| `disruption_label(shot)` | `disruption_labels(shots=None)` -> dict keyed by shot |
+| `shot_summary(shot)` | `shot_summaries(shots=None)` -> dict keyed by shot |
+
+`shots=None` means every shot in the index. Both return exactly what the
+single-shot form returns, per shot, so code written for one reads the other
+unchanged.
+
+The single-shot forms are still there and still correct; they are for one shot.
+**If a question mentions a range, a cohort, "which shots", "compare across" or
+any plural, the query should mention them all.**
 
 ## Two disruption labels that disagree -- use the authoritative one
 

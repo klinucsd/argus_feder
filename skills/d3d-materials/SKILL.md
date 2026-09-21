@@ -17,6 +17,33 @@ import sys; sys.path.insert(0, "/path/to/this/skill/directory")
 import d3d_materials as mat
 ```
 
+## Open the report with the answer
+
+**The report's first line is the answer itself, in two or three sentences,**
+before any table, method note or caveat. A reader who stops after that opening
+should still have the finding, its direction, and roughly its size.
+
+Nothing precedes it. A line reporting that the analysis finished, that the
+files are written, or that the report follows, describes the work rather than
+the result, and the reader can see for themselves that a report arrived.
+
+Give it a short bold lead-in -- `**Short answer**`, `**Bottom line**` -- so the
+eye finds it without reading for it.
+
+Write it to be taken in at a glance: two or three plain sentences, each making
+one point. A single sentence carrying four clauses, three parenthetical numbers
+and a pair of dashes is a paragraph wearing a summary's clothes -- it satisfies
+the instruction and defeats its purpose. Keep the supporting figures for the
+sections below, where there is room to attribute them.
+
+Everything after it is what earns it: the numbers, where they came from, what
+they rest on, what they do not establish. Put a qualification after the claim it
+qualifies rather than ahead of it -- a report that opens with its caveats has
+told the reader nothing yet, and the reader most likely to stop early is the one
+who most needs the finding.
+
+The opening is a summary, not a substitute. The full report follows it.
+
 ## Measured quantities are rows, not columns. Discover them first.
 
 There is no column named for a physical quantity. Everything measured lives in
@@ -36,6 +63,84 @@ depth-resolved; read it with `profiles()` rather than `values_by_sample()`.
 
 `mat.samples()` lists the samples and `mat.deliveries()` says where they came
 from and when.
+
+## A question about a quantity is a question about every method that measured it
+
+When the question compares techniques, asks how a quantity was measured, or
+asks how much to trust the answer, list the methods carrying that quantity
+first and report every one of them:
+
+```python
+qs = mat.quantities()
+methods = sorted({q["method"] for q in qs
+                  if q["quantity"] == chosen_quantity and q["method"]})
+```
+
+The methods are DATA. A delivery may carry one, or several that disagree, and
+where they disagree that is usually the finding. Answering from the first
+method that returns a number drops the rest silently, and the reader cannot
+tell anything was left out.
+
+A depth-resolved method is the one that disappears without a trace, because
+`values_by_sample()` asks only for scalar rows. Run against the deployed
+lakehouse, on a quantity two methods report:
+
+```python
+mat.values_by_sample(names, quantity=q, method=scalar_method)  # 9 samples
+mat.values_by_sample(names, quantity=q, method=profile_method) # {}
+mat.profiles(names,         quantity=q, method=profile_method) # 9 samples, 90 points
+```
+
+An empty result there means "not scalar", never "not measured". When a method
+appears in `quantities()` and `values_by_sample()` returns nothing for it, read
+it with `profiles()` before concluding the delivery has no data.
+
+## Put the question to the attached papers, every time
+
+A delivery often arrives with the publications behind it. **Search them at the
+start of every answer, whatever the question looks like:**
+
+```python
+import literature as lit
+scope = mat.literature_scope()
+hits = lit.get_chunks("the question, in ordinary words", scope)
+```
+
+Judging in advance whether a question "needs" the papers is a decision made
+before looking, and it is wrong often enough to matter. A question like "how
+does X affect Y" reads as a pure data question and is usually also a mechanism
+question. A question about what the measurements cannot settle, or what would
+be needed to go further, reads as a question about this delivery and is usually
+a question about published practice: naming a technique that would resolve it
+is a claim about what others have done. One search costs a single request.
+Guessing wrong costs a sentence the reader has no way to check, and an answer
+that explains *why* from the model's own knowledge is unsourced however
+plausible it sounds -- which is exactly what these papers are here to replace.
+
+What comes back is ranked, not filtered. The search returns its best passages
+whether or not the papers address the question at all, so read them before
+using them: the `literature` skill covers telling a passage that answers the
+question from one that merely shares its subject. Finding nothing that bears on
+the question is a normal outcome, and the answer says nothing about the
+literature in that case.
+
+`lit.works(scope)` lists what is attached. `NoLiteratureForScope` means this
+delivery has no papers catalogued -- a fact about the catalogue, not about the
+literature.
+
+## A paper that shaped the answer is cited twice
+
+Name it in the sentence that uses it, so the reader knows whose result they are
+reading. Then **close the report with a section of its own listing every paper
+the answer drew on**, headed `## References`.
+
+Give each one the citation exactly as `get_chunks` returned it in `citation`.
+The server assembles that from the catalogue, complete with the identifier that
+takes a reader to the paper. Shortening it to an author and a year leaves them
+searching for something you already had in hand, and retyping a volume or a
+year is how a citation that looks right stops being right.
+
+A report that drew on no paper has no such section and says nothing about it.
 
 ## More than one sample? Use the batch call.
 
@@ -659,3 +764,27 @@ asked for reports nothing, report that method as not measured and name the
 other method separately with its own value. Substituting a second method's
 number under the first method's name states a measurement that was never
 made, and it is the reader who knows the instruments who will catch it.
+
+## The papers this delivery came with
+
+A delivery sometimes arrives with the publications behind it: the references
+its proposal cites, the method papers it depends on. They are reached through
+the `literature` skill, which knows nothing about deliveries and addresses
+everything by a scope. This produces that scope:
+
+```python
+import literature as lit
+
+scope = mat.literature_scope()          # names this delivery's papers
+lit.works(scope)                        # what came with it
+lit.get_chunks("why was this expected to matter", scope)
+```
+
+Use it when a question asks WHY an experiment was designed a certain way, what
+a cited paper actually found, or how a result sits against published work.
+
+**The boundary is worth stating in the answer.** Every measurement comes from
+here -- the samples, the exposures, the observations. A paper reports somebody
+else's experiment, in their machine, on their material. It explains and it
+contextualises; it is not evidence about these samples, and a sentence that
+does not say whose result it is invites the reader to assume the wrong one.

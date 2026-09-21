@@ -65,6 +65,23 @@ def working_dir():
     cwd = os.getcwd()
     if os.path.basename(cwd).endswith("_sage_"):
         return cwd
+    # The running script's OWN directory, checked before the glob below.
+    #
+    # Scripts are written into the working folder and run by absolute path,
+    # which leaves the process in the notebook's folder one level up. argv[0]
+    # then identifies the working folder even when the environment variable did
+    # not survive into the subprocess -- and it names the right one, which the
+    # glob cannot: a directory holding several notebooks holds several `*_sage_`
+    # folders, and that ambiguous case fell through to cwd. Every fetched file
+    # then landed outside the working folder and was swept back, once per run,
+    # so the fault appeared only after a second notebook was run beside the
+    # first.
+    try:
+        argv0 = os.path.dirname(os.path.abspath(sys.argv[0]))
+        if os.path.basename(argv0).endswith("_sage_") and os.path.isdir(argv0):
+            return argv0
+    except Exception:                                            # noqa: BLE001
+        pass
     import glob as _glob
     here = [d for d in _glob.glob(os.path.join(cwd, "*_sage_")) if os.path.isdir(d)]
     return here[0] if len(here) == 1 else cwd
@@ -1311,7 +1328,26 @@ def fetch_artifact(artifact_id, dest=None):
     # hundreds of megabytes puts a blocking filesystem write on the critical
     # path of every analysis. Several scripts in one session each re-pulling
     # the same files is the normal pattern, so this is the common case.
-    dest = dest or working_dir()
+    # A relative `dest` resolves against the WORKING FOLDER, not the process
+    # cwd. An analysis script runs as a subprocess whose cwd is the notebook
+    # directory -- one level above the working folder -- so `dest="."` used to
+    # drop the file beside the notebook, where the notebook cannot read it back
+    # and the stray-file sweep had to move it after the fact. "Relative" here
+    # means "in the working folder", which is what `dest="."` was asking for.
+    # Mirrors save_figure, which has refused a path outside the folder all
+    # along; there was no reason for a fetch to behave differently.
+    root = os.path.realpath(working_dir())
+    if dest is None:
+        dest = root
+    else:
+        dest = dest if os.path.isabs(dest) else os.path.join(root, dest)
+        full = os.path.realpath(dest)
+        if full != root and not full.startswith(root + os.sep):
+            raise ValueError(
+                "%s is outside the working folder (%s), which is the only "
+                "place the notebook can read a fetched file back from. Pass a "
+                "bare name, or a subfolder of it." % (dest, root))
+        dest = full
     # Identity is the CONTENT, not the name and size.
     #
     # A delivery reuses filenames across samples -- one micrograph name appears
@@ -1380,3 +1416,31 @@ def fetch_artifact(artifact_id, dest=None):
                 "this file needs a valid FDP token: %s" % detail) from None
         raise LakehouseError("HTTP %d fetching %s: %s"
                              % (e.code, artifact_id, detail[:300])) from None
+
+
+def literature_scope(delivery_id=None):
+    """The scope naming this delivery's papers, for the `literature` skill.
+
+    A delivery sometimes arrives with the publications behind it. Those are
+    reached through `literature`, which is deliberately ignorant of what a
+    delivery is -- it addresses everything by a (scope_type, scope_id) pair.
+    This produces that pair, so the two skills meet without either knowing the
+    other's tables:
+
+        import literature as lit
+        lit.get_chunks("why was helium pre-exposure expected to matter",
+                       mat.literature_scope())
+
+    With one delivery loaded the id can be left out. With several, name the one
+    you mean: papers belong to the delivery they arrived with, and a question
+    about one delivery should not read another's references.
+    """
+    if delivery_id is None:
+        rows = deliveries()
+        if len(rows) != 1:
+            raise ValueError(
+                "there are %d deliveries, so the one to read papers for has to "
+                "be named: literature_scope(delivery_id=...). Call deliveries() "
+                "for the list." % len(rows))
+        delivery_id = rows[0]["delivery_id"]
+    return ("materials_delivery", str(delivery_id))

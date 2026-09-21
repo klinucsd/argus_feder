@@ -269,6 +269,61 @@ def disruption_label(shot, derived=False):
                        "curated label on some shots"}
 
 
+def disruption_labels(shots=None, derived=False):
+    """Labels for MANY shots in ONE query. Prefer this over looping.
+
+    `shots=None` means every shot in the index. Returns a dict keyed by shot,
+    each value shaped exactly like `disruption_label()` returns, so code that
+    reads one can read many without changing.
+
+    This exists because the single-shot form costs one HTTP round trip, and the
+    obvious loop over a shot list turns a question into hundreds of requests.
+    Reach for the batch form whenever more than one shot is in play.
+    """
+    rows = _query("SELECT shot, disrupted, t_disrupt FROM disruption.shots"
+                  " ORDER BY shot")
+    if shots is not None:
+        want = set(shots)
+        rows = [r for r in rows if r["shot"] in want]
+
+    if not derived:
+        return {r["shot"]: {
+            "shot": r["shot"], "disrupted": bool(r["disrupted"]),
+            "t_disrupt": r["t_disrupt"],
+            "source": "time_until_disrupt (d3drdb, curated)"} for r in rows}
+
+    # One pass for the derived indicator too, rather than one query per shot.
+    d = {r["shot"]: r["cqt"] for r in _query(
+        "SELECT shot, MIN(current_quench_time) AS cqt"
+        " FROM disruption.disruption_samples"
+        " WHERE current_quench_time IS NOT NULL GROUP BY shot")}
+    return {r["shot"]: {
+        "shot": r["shot"], "disrupted": r["shot"] in d,
+        "t_disrupt": d.get(r["shot"]),
+        "source": "current_quench_time (disruption-py, derived from Ip decay)",
+        "warning": "derived indicator, not the label; disagrees with the "
+                   "curated label on some shots"} for r in rows}
+
+
+def shot_summaries(shots=None):
+    """Per-shot index rows for MANY shots in ONE query, keyed by shot.
+
+    The batch form of `shot_summary()`. Same reason: one round trip instead of
+    one per shot.
+    """
+    rows = _query("SELECT * FROM disruption.shots ORDER BY shot")
+    if shots is not None:
+        want = set(shots)
+        rows = [r for r in rows if r["shot"] in want]
+    # Same annotation the single-shot form adds, so the two agree field for
+    # field and code written against one reads the other unchanged.
+    for r in rows:
+        r["label_source"] = (
+            "time_until_disrupt, from the human-curated d3drdb disruptions table"
+        )
+    return {r["shot"]: r for r in rows}
+
+
 def label_disagreements():
     """Shots where the curated label and the derived indicator disagree."""
     # Wrapped in a subquery, and both sides cast to boolean, for two reasons
