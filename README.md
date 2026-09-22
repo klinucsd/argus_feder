@@ -315,7 +315,7 @@ never measured.
 The JupyterHub notebooks need no install step — use the prebuilt image:
 
 ```
-kaiucsd/argus-feder:0.1.7
+kaiucsd/argus-feder:0.1.9
 ```
 
 Supply two credentials at runtime (neither is baked into the image):
