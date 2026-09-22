@@ -292,22 +292,23 @@ set answers it, and the answer is not one number: helium at 800 K lowers retenti
 under an ELMy H-mode plasma and raises it under L-mode, while helium at 600 K
 raises it under both.
 
-Three further questions test how far that survives. Two of the techniques agree
-on the direction of the helium effect in every matched pair but not on its size,
-and the depth-resolved bands show why: helium moves deuterium toward the surface
-as often as it changes how much is held, so a measurement that integrates to a
-different depth returns a different number. The third reports uncertainties as
-large as its own values, and can corroborate a direction without resolving a
-difference. L-mode retains more deuterium than H-mode in every matched pair, but
-the two campaigns differ in seven recorded conditions at once and drew on
-different shots, so the confinement regime cannot be separated from what changed
-alongside it. The closing question asks what the set cannot settle: with one
-coupon per condition the differences belong to these coupons rather than to
-tungsten, and the coupon temperature during exposure — the quantity the retention
-physics turns on — was never measured.
+Three further questions test how far that survives. The three techniques do not
+measure the same quantity — they reach different depths and report in different
+representations — so each is read on its own terms rather than pooled or ranked,
+and where they diverge the divergence is itself the result: helium moves
+deuterium toward the surface as much as it changes how much is held, so a
+measurement integrating to a different depth returns a different number. The
+coupons exposed in L-mode retained more deuterium than their H-mode counterparts
+by both areal techniques, in every matched pair, though the two campaigns
+differed in seven recorded conditions, so the effect belongs to the campaigns
+rather than to confinement mode alone. The closing question asks what the set
+collectively supports and what it cannot settle: with one coupon per condition
+the differences belong to these coupons rather than to tungsten, and the coupon
+temperature during exposure — the quantity the retention physics turns on — was
+never measured.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb)
-<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb -->
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v4_jupyterhub.ipynb)
+<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb -->
 
 ## Running on JupyterHub
 
