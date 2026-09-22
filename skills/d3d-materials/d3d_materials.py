@@ -41,7 +41,7 @@ def _query(sql, params=()):
     return _query_api(sql, params)
 
 
-def working_dir():
+def _resolve_working_dir():
     """The notebook's working folder -- where fetched files belong.
 
     NOT the current directory. A script may be run from anywhere (`python
@@ -85,6 +85,19 @@ def working_dir():
     import glob as _glob
     here = [d for d in _glob.glob(os.path.join(cwd, "*_sage_")) if os.path.isdir(d)]
     return here[0] if len(here) == 1 else cwd
+
+
+def working_dir():
+    """The notebook's working folder, ending in a separator.
+
+    The trailing separator is deliberate. `working_dir() + "name.csv"` is the
+    natural way to build a destination, and without it that lands a sibling of
+    the folder rather than a file inside it -- a stray the sweep then moves
+    back, once for every script that repeats the concatenation. With it the
+    naive form is correct, `working_dir() + "/name.csv"` still resolves, and
+    `os.path.join()` and `os.path.realpath()` are unaffected.
+    """
+    return os.path.join(_resolve_working_dir(), "")
 
 
 def _as_list(x):

@@ -95,6 +95,35 @@ An empty result there means "not scalar", never "not measured". When a method
 appears in `quantities()` and `values_by_sample()` returns nothing for it, read
 it with `profiles()` before concluding the delivery has no data.
 
+## Take the values from the delivery in the run that reports them
+
+A question about measured values, or about the measurements themselves, is
+answered by querying the delivery in this run -- `observations()`, `profiles()`,
+`values_by_sample()`, `exposure_conditions()` -- and reporting what those calls
+return.
+
+An earlier answer in the same notebook usually leaves its extracted tables and
+excerpt files in the working folder. Read them to cross-check what you
+computed, and say so where they agree.
+
+A quotation that reaches the answer through one of those files carries that
+file's name as its source. The delivered document is what `documents()` and
+`document_text()` return; a file an earlier run wrote is a copy of it, so
+attributing the copy's wording to the document reports a reading that did not
+happen in this run.
+
+## An answer that compares methods carries what the delivery says about comparing them
+
+Where the answer weighs two or more methods against each other, read the
+delivery's `notes` and give its own guidance on whether those methods are
+comparable, in the answer. Where the delivery records no such guidance, say
+that none is recorded.
+
+State an ordering only where a tool result carries one. An ordering that
+follows from the reported uncertainties is a property of those uncertainties:
+name them and give their values, so the reader sees what the ordering rests on
+rather than a verdict on the instruments.
+
 ## Put the question to the attached papers, every time
 
 A delivery often arrives with the publications behind it. **Search them at the
@@ -141,6 +170,134 @@ searching for something you already had in hand, and retyping a volume or a
 year is how a citation that looks right stops being right.
 
 A report that drew on no paper has no such section and says nothing about it.
+
+## Check the delivery's own evidence for what the treatment did
+
+**A question about what a treatment did to a material is a question about what
+the delivery recorded that would show it** -- a structure that formed, a layer
+that altered, a surface that changed. Make checking for that evidence a step of
+the work, alongside pulling the measurements, rather than something to reach for
+only if an explanation later calls for it. A mechanism taken from a paper
+explains somebody else's samples. Whether these samples show it is a different
+question, and often an answerable one.
+
+What would show a mechanism is usually recorded as files rather than rows, so
+it has no entry in `observations` and nothing in the measurement tables points
+at it:
+
+```python
+kinds = sorted({a["kind"] for a in mat.artifacts() if a["kind"]})
+```
+
+`kind` is None on a file the provider filed under no stage; guard the
+comprehension or it raises. **Images** below covers comparing them at one
+magnification, reading their acquisition settings, and measuring them -- an
+image is measurable even though it cannot be read, so a surface can be
+characterised quantitatively rather than described from memory.
+
+Then say what the record shows, or say that the delivery recorded nothing that
+would show it. Both of those are answers. Explaining a result by a mechanism
+while leaving the delivery's own evidence for it unexamined is not.
+
+### Show the images when they document the step the question asks about
+
+**An image records a state at one moment in the sample's life.** It is evidence
+about what happened before it, and evidence about nothing that happened after.
+That decides whether it belongs in the answer:
+
+- The question asks about the effect of a step that **precedes** the imaging —
+  the pictures are direct evidence for it. **Show them.** This is not optional
+  and not conditional on whether the numbers already answer the question; a
+  reader asking what a treatment did to a material expects to see the material.
+- The question asks about a step that **follows** the imaging — the pictures
+  look the same whichever way that later step went, so they are not evidence
+  about it. Leave them out.
+- The question asks which instrument produced a number, or how two instruments
+  compare — leave them out.
+
+`artifacts()` gives each file's `kind` and `quantities()` gives each
+measurement's `stage`, so the order of the sample's life is recoverable. Place
+the imaging in that order before deciding, and check which samples carry
+images: a delivery often images the ones that stopped partway through the life
+and not the ones that went all the way.
+
+Those images still document the treatment those samples did receive -- the same
+treatment the ones that went further also received -- so where the question is
+about that treatment, show them, even though nothing was imaged after the later
+steps. Ask which step the imaging followed, not whether images exist at the end.
+
+Where the pictures do belong, finish the job:
+
+```python
+imgs = mat.image_artifacts(names)        # one request, near-duplicates dropped
+
+by = {}                                   # settings -> {sample: artifact}
+for a in imgs:
+    md  = a["metadata"]                   # keys are whatever the instrument wrote
+    key = (md.get("CM_MAG"), md.get("CM_ACCEL_VOLT"))
+    if all(key):
+        by.setdefault(key, {}).setdefault(a["sample_name"], a)
+
+key  = max(by, key=lambda k: (len(by[k]), int(k[0])))  # most samples, then most detail
+pick = list(by[key].values())             # one image per sample, same settings
+mat.show_images([a["artifact_id"] for a in pick],
+                labels=[a["sample_name"] for a in pick],
+                title="surface comparison at %sx, %s kV" % key)
+```
+
+**Match on every setting that changes how a surface looks, not magnification
+alone.** Accelerating voltage changes contrast and how deep the beam samples,
+so two images at one magnification and two voltages are not a comparison
+either. Group by the whole tuple.
+
+**Load only the images you are going to show or measure.** The listing already
+carries the metadata the choice needs, so choosing costs nothing, while every
+`load_image` is a fetch.
+
+Measure the chosen surfaces rather than describing them: compute one comparable
+statistic across them and report it beside the figure, with the instrument,
+voltage and magnification from the metadata. Where a conclusion rests on that
+statistic, measure every image at the chosen settings and report the spread --
+a difference taken from one image per sample can reverse on a different choice.
+
+Say which stage of the sample's life the images record, and whether any later
+stage is imaged. Where none is, a change across that step cannot be assessed
+from pictures.
+
+**Then choose the settings the MOST samples share.** Two opposite traps sit
+here and both produce a figure that reads as a comparison:
+
+- Taking the first image's settings picks whatever sorts first, which may be a
+  combination only one sample has -- a one-picture comparison.
+- Fixing on one parameter and letting another vary silently drops any sample
+  that used a different value for it. That is the worse of the two, because
+  the figure still shows several samples and looks complete, while the sample
+  most relevant to the question may be the one missing.
+
+Ranking by how many samples carry each full combination avoids both. Where
+several combinations tie, prefer the higher magnification -- more surface
+structure is visible.
+
+**Say how many samples are imaged.** A delivery commonly images a few of its
+coupons and not the rest, so the figure covers a subset — name it rather than
+letting the reader assume every sample is shown.
+
+Then, in the answer:
+
+- **Name the stage they document.** An image filed under a pre-exposure stage
+  records the state going INTO the exposure; saying otherwise inverts the
+  experiment.
+- **Give the acquisition settings** -- instrument, voltage, magnification --
+  from the companion metadata, so the comparison is citable.
+- **Say what differs between them, from measurement rather than from memory.**
+  An image is measurable even though it cannot be read: load it and compute
+  something -- a mean gradient, a characteristic feature scale from a power
+  spectrum -- and report the number beside the picture.
+
+Where they cannot be compared -- no magnification shared across samples, or
+only one sample imaged -- say so, and say what was there instead. The one
+outcome that is not acceptable is an answer that discusses a surface while the
+delivery's pictures of that surface go unshown.
 
 ## More than one sample? Use the batch call.
 
@@ -224,6 +381,17 @@ one line and either confirms the phrase or replaces it. When the computed
 value turns out not to support the point the sentence was making, the point
 goes with it -- a supporting clause that is merely rephrased to match the
 arithmetic is no longer supporting anything.
+
+## Comparing two recorded conditions: give the design with the numbers
+
+Where an answer compares two sets of conditions a delivery records, give what
+was **intended** -- from the design document delivered with the samples, named
+-- beside what was **recorded**, with the sizes of the differences. A difference
+between two campaigns is not a difference attributable to the one variable their
+names suggest.
+
+Where the delivery records no judgement about whether those differences are
+large or small, supply none.
 
 ## An exposure is a shared campaign
 
@@ -459,6 +627,13 @@ MP_W_erosion_retention_2020_v9.pdf L174  ... resolution to resolve intra-ELM ...
 
 `documents()` lists what will be searched; `document_text()` returns one
 document in full once a hit looks worth following.
+
+Extension is not a barrier: these parse in the tool process, so a `.pdf`,
+`.xlsx` or `.docx` is readable here even where the plain file-read tool refuses
+it.
+
+Where an answer rests on the documents, say what each one contributed, or that
+it contributed nothing.
 
 **A search returning nothing is a result.** If a configuration detail is not in
 any document, it is not recoverable, and an analysis that depends on it should
