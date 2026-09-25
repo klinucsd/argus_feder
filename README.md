@@ -307,8 +307,8 @@ the differences belong to these coupons rather than to tungsten, and the coupon
 temperature during exposure — the quantity the retention physics turns on — was
 never measured.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v4_jupyterhub.ipynb)
-<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb -->
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v5_jupyterhub.ipynb)
+<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v4_jupyterhub.ipynb -->
 
 ## Running on JupyterHub
 
