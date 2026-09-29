@@ -44,6 +44,48 @@ who most needs the finding.
 
 The opening is a summary, not a substitute. The full report follows it.
 
+## A statistic you computed carries its definition
+
+Where the answer reports a number the delivery does not contain -- a texture
+statistic derived from an image, an integral over a profile, a ratio, a
+propagated uncertainty -- give in one line how it was computed and which
+direction means more of the thing being described.
+
+The reader is checking the work, not taking it on trust. A named statistic with
+no definition cannot be reproduced, cannot be compared against their own, and
+cannot be argued with; it reads as authoritative precisely where it is least
+checkable.
+
+## One form for a comparison, and one name for it
+
+A comparison between two measured values can be written as a ratio or as a
+percentage change. **Choose one form and use it for every comparison in the
+answer.** Printing both -- `1.111` beside `+11.1%` -- states the same number
+twice and invites the reader to hunt for the difference between them.
+
+Then one form gets one name, in the prose, in the table headers and in the
+figure captions alike. Where the same idea is headed a ratio in one table, a
+change in the next and an effect in the text, a reader has to work out that the
+three are one thing before they can read any of them, and the natural reading
+is that they are not.
+
+Pick the name from what the number IS, use it where the quantity is first
+reported, and do not vary it for the sake of the sentence.
+
+## Give a method or a material the field's name once
+
+Where the report first names a characterization method, or the material the
+samples are made of, put the community term beside our own. Write our term with
+the community term after it, at first mention only, and carry on with ours
+afterwards so the prose stays readable.
+
+`mat.load_mvp_ontology()` returns the community concept for each term this
+delivery uses; a row marked `exact` is our own term and that concept naming one
+thing two ways, which is what makes it safe to print. A reader who knows a
+technique only by its full name and a reader who knows only the abbreviation
+then both find their footing, without either having to work out that the two
+are the same.
+
 ## Measured quantities are rows, not columns. Discover them first.
 
 There is no column named for a physical quantity. Everything measured lives in
@@ -63,6 +105,28 @@ depth-resolved; read it with `profiles()` rather than `values_by_sample()`.
 
 `mat.samples()` lists the samples and `mat.deliveries()` says where they came
 from and when.
+
+## Name what the delivery measured as the FEDER ontology names it
+
+`mat.load_mvp_ontology()` returns the community concept for each term this
+delivery uses -- its methods, quantities, materials and stages -- read live
+from the FEDER knowledge graph, so the list follows the data rather than a list
+kept here.
+
+```python
+for c in mat.load_mvp_ontology():
+    print(c["match"], c["source"], c["term"], "->", c["label"], c["iri"])
+```
+
+When an answer names a method or a material, give the ontology's term beside
+ours for every row marked `exact`: that concept answers to our own term, as a
+label or an alternate label, so the two are one thing under two names. Treat a
+row marked `partial` as a suggestion for a reader to judge, never as an
+equivalence to state.
+
+When a term has no row, it has no concept in the ontology. Report that plainly
+where it is relevant rather than reaching for an approximate concept -- what
+the ontology does and does not cover is itself worth knowing.
 
 ## A question about a quantity is a question about every method that measured it
 

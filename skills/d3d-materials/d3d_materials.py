@@ -1457,3 +1457,141 @@ def literature_scope(delivery_id=None):
                 "for the list." % len(rows))
         delivery_id = rows[0]["delivery_id"]
     return ("materials_delivery", str(delivery_id))
+
+
+# --------------------------------------------------------------------------
+# FEDER ontology -- community names for what this delivery measured
+# --------------------------------------------------------------------------
+# The ontology holds names, not data: every endpoint that would bind a concept
+# to a shot or a measurement is empty today. So it can say that what we call
+# ERDA is `elastic recoil detection analysis`, and nothing more. Used for what
+# it is, that is worth having -- an answer that names the community term is
+# legible to someone who has never seen our column names.
+#
+# The terms looked up are taken from the DATA -- the methods, quantities,
+# materials and stages actually present -- so a delivery bringing a new
+# instrument is looked up without an edit here.
+
+_ONTOLOGY_CACHE = None
+
+
+def _kg_get(path):
+    """GET one ontology path through the lakehouse, which holds the credential.
+
+    The knowledge graph authenticates with Keycloak and issues five-minute
+    tokens; the lakehouse proxies it so that a notebook needs only the FDP
+    token it already has.
+    """
+    import json                                                  # noqa: PLC0415
+    import urllib.error                                          # noqa: PLC0415
+    import urllib.parse                                          # noqa: PLC0415
+    import urllib.request                                        # noqa: PLC0415
+
+    # `_endpoint()` already ends in /FEDER, as the artifact call above relies on.
+    url = _endpoint() + "/kg/proxy?path=" + urllib.parse.quote(path, safe="")
+    headers = {"Accept": "application/json"}
+    tok = _token()
+    if tok:
+        headers["Authorization"] = "Bearer %s" % tok
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace")[:200]
+        raise LakehouseError(
+            "the ontology could not be read (HTTP %d): %s" % (e.code, detail)
+        ) from None
+    except Exception as e:                                       # noqa: BLE001
+        raise LakehouseError(
+            "cannot reach the ontology through %s: %s" % (_endpoint(), e)
+        ) from None
+
+
+def ontology_search(term, limit=5):
+    """FEDER ontology concepts matching a term. Each has an id, label and iri.
+
+    Matching upstream is over labels and synonyms and requires every word to
+    hit, so a compact code finds nothing where its expansion would: search the
+    words a person would say.
+    """
+    import urllib.parse                                          # noqa: PLC0415
+    hits = _kg_get("ontology/search?limit=%d&q=%s"
+                   % (limit, urllib.parse.quote(str(term))))
+    return hits if isinstance(hits, list) else []
+
+
+def load_mvp_ontology(refresh=False):
+    """Align this delivery's own terms with the FEDER ontology.
+
+    Returns one row per term that the ontology recognises, with:
+
+        term     what our data calls it, and where that came from
+        source   'method', 'quantity', 'material' or 'stage'
+        match    'exact'   -- the concept answers to our term itself, as a
+                             label or a skos:altLabel. Safe to state.
+                 'partial' -- the search reached it, but it is named
+                             differently. A candidate for a human to accept,
+                             NOT an equivalence to assert.
+        label, concept_id, iri   the concept
+
+    An exact match is the useful kind: the ontology carries `ERDA` and `NRA` as
+    alternate labels, and `W` for tungsten, so those align with no judgment
+    call. Terms with no row here simply have no concept -- that is a fact about
+    the ontology's coverage, not a failure, and it is worth reporting as such.
+    """
+    global _ONTOLOGY_CACHE
+    if _ONTOLOGY_CACHE is not None and not refresh:
+        return _ONTOLOGY_CACHE
+
+    wanted = []
+    seen = set()
+    for row in quantities():
+        for source in ("method", "quantity", "stage"):
+            value = row.get(source)
+            if value and (source, value) not in seen:
+                seen.add((source, value))
+                wanted.append((source, value))
+    for row in samples():
+        value = row.get("material")
+        if value and ("material", value) not in seen:
+            seen.add(("material", value))
+            wanted.append(("material", value))
+
+    out = []
+    failed = 0
+    for source, term in wanted:
+        try:
+            hits = ontology_search(term, limit=5)
+        except LakehouseError as e:
+            # One failed lookup must not lose the alignments already found. All
+            # of them failing is a different thing entirely: returning an empty
+            # list would read as "the ontology covers none of these terms",
+            # which is a conclusion about the ontology drawn from an outage.
+            failed += 1
+            if failed == len(wanted):
+                raise LakehouseError(
+                    "no term could be looked up, so nothing here says anything "
+                    "about what the ontology covers: %s" % e) from None
+            continue
+        found = []
+        for hit in hits:
+            names = {str(n).strip().lower()
+                     for n in (hit.get("synonyms") or []) + [hit.get("label")] if n}
+            found.append({
+                "term": term,
+                "source": source,
+                "match": "exact" if str(term).strip().lower() in names else "partial",
+                "label": hit.get("label"),
+                "concept_id": hit.get("id"),
+                "iri": hit.get("iri"),
+            })
+        # A broad term reaches five differently-named concepts, none of which it
+        # IS -- five rows of noise inviting the reader to pick one and call it
+        # an equivalence. Keep every exact match, or else the search's own best
+        # candidate and nothing behind it.
+        exact = [f for f in found if f["match"] == "exact"]
+        out.extend(exact if exact else found[:1])
+    out.sort(key=lambda r: (r["match"] != "exact", r["source"], r["term"]))
+    _ONTOLOGY_CACHE = out
+    return out
