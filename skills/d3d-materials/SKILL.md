@@ -221,6 +221,35 @@ literature in that case.
 delivery has no papers catalogued -- a fact about the catalogue, not about the
 literature.
 
+### A comparison between conditions has two literatures: search for both
+
+A question of the form "how does this quantity differ between one condition and
+another" carries two bodies of work behind it. One is about the quantity and how
+it is measured. The other is about the conditions themselves -- what they are,
+what distinguishes them, and what else changes when one is chosen over the
+other.
+
+A single search phrased around the quantity returns only the first, because that
+is what it asked for. So search a second time for the conditions themselves,
+named the way a reader of that field would name them rather than the way the
+data labels them:
+
+```python
+hits = lit.get_chunks("the quantity, in ordinary words", scope)
+more = lit.get_chunks("what distinguishes these conditions from each other", scope)
+```
+
+The second search is what tells you whether the differences recorded between two
+conditions are independent of one another or are consequences of a single
+underlying change. That distinction decides what the comparison can support, so
+it belongs in the answer whether the papers settle it or not.
+
+Write what that second search found into the answer itself, in a sentence that
+names the paper it came from and says what it does not settle about this
+delivery. A paper reaching the reference list without reaching the prose reads
+as one the answer drew on, and an answer that drew on nothing from it should not
+list it.
+
 ## A paper that shaped the answer is cited twice
 
 Name it in the sentence that uses it, so the reader knows whose result they are
