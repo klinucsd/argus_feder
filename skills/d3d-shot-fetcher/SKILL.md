@@ -40,6 +40,55 @@ sorted({r["name"][4:] or "(bare)" for r in find_signals("FS0%", limit=400)})
 That one call tells you which spectral lines the filterscopes actually record,
 which is faster and more reliable than guessing names and fetching each.
 
+## The catalogue's `tree` field is NOT the tree to pass
+
+`find_signals()` reports a `tree` field and a `full_path`. Neither one is the
+argument `MdsSignal` wants, and the catalogue cannot be used to choose between
+the candidates. Measured on shot 185258:
+
+| family                                      | tree to pass |
+|---------------------------------------------|--------------|
+| AEQDSK: `wmhd`, `aminor`, `densv2`, betas    | `efit01`     |
+| CONFINEMENT times: `taue`, `tauel89`         | `d3d`        |
+| `poh`                                        | either       |
+
+Every one of those reports `tree: EFIT` and a `\D3D::...` full path, so the
+two families look identical in the catalogue and are not interchangeable in a
+fetch:
+
+```python
+MdsSignal(r"\wmhd", "efit01")   # 273 pts;  tree "d3d" returns nothing
+MdsSignal(r"\taue", "d3d")      # 273 pts;  tree "efit01" returns nothing
+```
+
+For the confinement times, `d3d` is a strict superset of `efit01`: wherever
+`efit01` has them `d3d` has them too, and `d3d` also serves shots where
+`efit01` is empty. So ask `d3d` and do not try both.
+
+A bare tag and a full node path are equivalent -- `\taue` and
+`\top.results.confinement.times:taue` return the same data or the same
+error in the same tree. Constructing the long form gains nothing.
+
+**Two MDSplus errors that mean different things.** Read which one came back
+before deciding what to do:
+
+- `TreeNODATA` -- the node exists; there is no data **for this shot**. Once
+  the right tree has been asked, this is the final answer: the shot does not
+  carry that quantity. Report that and move on. Do not walk the tree, and do
+  not try more node paths -- a tag and a path fail identically.
+- `TreeNNF` -- node not found. The name or the tree is wrong. Looking harder
+  in the same place will not help; go back to `find_signals()`.
+
+Measured across five shots: 165822 and 170000 carry `taue` in both trees,
+185258 and 194000 only in `d3d`, and 165920 in neither. Availability is a
+property of the shot as much as of the tree, so a shot that lacks a quantity
+is a normal outcome and not a lookup that failed.
+
+An agent asked for the archived confinement time opened `efit01`, hit
+`TreeNODATA` on `\TOP.RESULTS.CONFINEMENT.TIMES:TAUE`, and wrote four
+successive tree-walking scripts trying to locate a node that was in `d3d` the
+whole time. The tree walk is never the answer to `TreeNODATA`.
+
 ## First: `PTSERVER` / `getservbyname` errors mean the wrapper was omitted
 
 If a fetch fails with:
@@ -374,7 +423,90 @@ carried across. Sample counts and time spans that differ by a large factor
 imply the cadences differ too; if your two numbers come out equal, recheck
 which array each was measured on.
 
+## Putting a fast trace on a slow trace's time base: average, do not sample
+
+Equilibrium reconstructions publish on a coarse grid; heating powers,
+magnetics and most raw diagnostics publish orders of magnitude faster. To
+reduce a fast signal onto the slow signal's grid, take the MEAN of the fast
+trace over each grid interval -- not its value at the grid point, and not a
+local median.
+
+```python
+# fast (t_f, d_f) reduced onto the slow grid t_s, both in ms
+edges = np.concatenate(([t_s[0] - (t_s[1] - t_s[0]) / 2],
+                        (t_s[:-1] + t_s[1:]) / 2,
+                        [t_s[-1] + (t_s[-1] - t_s[-2]) / 2]))
+idx = np.searchsorted(t_f, edges)
+binned = np.array([np.nanmean(d_f[a:b]) if b > a else np.nan
+                   for a, b in zip(idx[:-1], idx[1:])])
+```
+
+Why the other two estimators fail: neutral-beam power is square-wave modulated
+on purpose, so a fast power trace spends much of a discharge switching between
+two levels. Point interpolation returns whichever level the grid point happened
+to land on, and when the modulation period is close to the grid spacing it can
+lock onto one phase for a whole window. A local median returns the level the
+beam sits at more than half the time, which at a duty cycle near 50% is the <!-- lint-ok: a beam duty cycle, not a share of any dataset -->
+lower one. Both are biased by the modulation; only the mean is the average
+power the plasma actually received.
+
+Verified 2026-10-27 on one 0.1 ms beam-power trace against the 20 ms
+equilibrium grid, same window for all three: the window mean was 5.43 MW, a
++/-10 ms local median gave 3.71 MW (-32%), and point interpolation gave <!-- lint-ok: an estimator bias measured on one trace -->
+1.71 MW (-69%). On a trace that was not modulated the three agreed to a few <!-- lint-ok: an estimator bias measured on one trace -->
+percent -- so the error appears only on the shots where it matters, and a
+spot-check on one shot will not reveal it.
+
+**A power that feeds a ratio carries its error into the ratio.** An energy
+confinement time is a stored energy over a power; a radiated fraction is one
+power over another. A 30% error in a power moves both, in opposite directions, <!-- lint-ok: a hypothetical magnitude, not a measured share -->
+and the results still look physical. Check how a fast trace was reduced before
+trusting anything derived from it.
+
+## The catalogue's `Units` string is a label, not a guarantee
+
+`explain_signal()` returns the unit the archive records for a tag. It is the
+right place to start and it is usually right, but it is metadata someone typed
+and the stored values can disagree with it -- a trace labelled in megawatts
+holding watt-scale numbers, for instance.
+
+**Two signals from different subsystems rarely share a unit.** Each subsystem
+archives its quantity the way that subsystem stores it, so a sum across
+subsystems is where this bites: one term a thousand times the size of the
+others changes a total without making the total look wrong.
+
+Before summing or dividing quantities that came from different tags, print
+each one's unit string AND its magnitude for one shot, and reconcile the two:
+
+```python
+for name in signals:
+    d = np.asarray(rec[name]["data"], float)
+    print(f"{name:<12} unit={rec[name]['units']['data']!r:>10} "
+          f"median={np.nanmedian(d[np.isfinite(d)]):.4g}")
+```
+
+A megawatt-scale quantity reading 1e6 is in watts whatever the label says. The
+magnitude is the evidence; the label is a hint.
+
 ## Data access constraints
+
+### When the token has expired
+
+A fetch whose cause is an expired credential reports it and stops; renewing a
+credential is the user's to do, not yours. Two things make the message useful.
+
+`fdp` prints `run \`fdp login\` to refresh`, and on JupyterHub that advice is
+incomplete: `fdp login` shells out to pelican, which requires a TTY the
+notebook kernel does not have. **Tell the user to run `%fdp_login` in a
+notebook cell instead.** It talks to the issuer over HTTP, needs no terminal,
+and installs the token everywhere both this skill and the lakehouse client
+read it. From a terminal `fdp login -D d3d` works, but it must be followed by
+`reload_pelican()` in the kernel, because `BEARER_TOKEN` is set at kernel start
+and writing the file alone leaves the stale value in the environment.
+
+Report the message verbatim, say which service refused, and stop there.
+
+### Trees
 
 Data comes from the Pelican mirror. MDSplus tree paths for ALL DIII-D trees are
 configured at kernel start (or by calling `reload_pelican()`), so many trees
@@ -478,6 +610,50 @@ from the tag name alone.** Verification discipline applies to everything
 stated in the answer, not only to the part that was explicitly asked for --
 a domain scientist reading the answer can't tell which parts were "the
 question" and which were bonus context, and will trust both equally.
+
+## A quantity published as several chords: one failing is not the quantity failing
+
+Some quantities are archived once per line of sight rather than once per shot.
+The CO2 interferometer's line-averaged density is the clearest case: the
+AEQDSK branch of the EFIT trees carries `\densv1`, `\densv2`, `\densv3` and
+`\densr0` -- four chords through different parts of the plasma, all in m^-3 and
+all on the same time base. `explain_signal()` in `d3d-relational-db` says which
+chord each one is.
+
+A chord can fail while its siblings stay healthy, and the archive stores the
+failure rather than a gap: the node fetches, returns the right number of
+samples on the right time base, and the values are unphysical -- orders of
+magnitude off, or negative, or pinned to a constant. A line-averaged density in
+this machine is of order 1e19 to 1e20 m^-3, <!-- lint-ok: a physical scale, not a dataset count -->
+so a reading far outside that, or below zero, is the chord and not the plasma.
+
+**Before concluding a shot has no usable value for such a quantity, fetch the
+whole family and compare.** Use the chords that agree; say how many survived
+and how far apart they were, because different lines of sight genuinely see
+different densities and that spread is the uncertainty on whatever you derive.
+
+```python
+chords = [r"\densv1", r"\densv2", r"\densv3", r"\densr0"]
+pipe = Pipeline(shots)
+for c in chords:
+    pipe.fetch(c, MdsSignal(c, "efit01"))
+# per record: keep the chords whose median sits in a physical range, then
+# report the spread across the survivors beside the value you use
+```
+
+Verified 2026-10-27: on a run of shots where `\densv2` read about 1e23 m^-3 and
+`\densv3` was pinned negative, `\densv1` and `\densr0` were clean and agreed
+with each other to roughly 10%. An analysis that tested only `\densv2` concluded
+those shots had no measurable density and dropped them -- and they were the
+highest-density shots it had gone looking for.
+
+**A fallback name that errors on a shot you know is good is a NAME problem.**
+That same analysis then tried the chord names as PTDATA pointnames. They are not
+pointnames -- they live in the EFIT AEQDSK branch -- so they errored everywhere,
+including on its own control shot, and the errors were read as more evidence the
+data was missing. When a fallback fails on every shot rather than on the suspect
+ones, check the name against the catalogue before concluding anything about
+coverage.
 
 ## Code-writing gotchas (verified 2026-08-02, extended 2026-08-11)
 

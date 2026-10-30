@@ -398,6 +398,34 @@ if it just wants "what was the elongation for this shot" as one number,
 carry a paired `t_*` column (e.g. `betanmax`/`t_betanmax`) giving the TIME at
 which that peak/representative value occurred -- report both if asked "when."
 
+## A SUMMARIES scalar carries no unit guarantee -- check it before computing with it
+
+`explain_signal()` gives the unit of a catalogued MDSplus tag. SUMMARIES columns
+are not that catalogue. Several of them hold whatever unit the code that filled
+them used -- a current in amperes beside a power in kilowatts, a density whose
+exponent differs from the corresponding signal's by the cm^-3 to m^-3 factor of
+1e6, <!-- lint-ok: a unit conversion, not a dataset fact --> a column whose name
+suggests one unit while the values are in another.
+
+That is harmless until the column is combined with something else. A Greenwald
+fraction, a radiated fraction, a confinement time each divide one quantity by
+another, and a wrong exponent in either one produces a dimensionless number that
+still reads like a fraction.
+
+**Check an order of magnitude before putting a column into a formula** -- against
+the physics, and against the same quantity fetched through `d3d-shot-fetcher`
+for one shot. If the two disagree by a round factor the column is in another
+unit; if they disagree by an unround factor, or the sign flips, prefer the
+signal and say which you used.
+
+**A SUMMARIES column that was itself DERIVED is a claim, not a measurement.**
+Durations, flat-top windows and "time of" columns were computed by earlier code
+from a trace you can fetch yourself. Wherever the answer depends on that window
+-- anything averaged over a flat-top -- derive the window from the current trace
+and keep the summary column as a cross-check. When the two disagree, say so:
+the disagreement is a finding about the archive, and quoting the column without
+checking hides it.
+
 ## CRITICAL: do NOT use SUMMARIES.t_disrupt (or similar) as a disruption label
 
 `SUMMARIES` has a `t_disrupt` column that LOOKS like a disruption time, but its
