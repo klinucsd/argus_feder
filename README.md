@@ -307,15 +307,15 @@ the differences belong to these coupons rather than to tungsten, and the coupon
 temperature during exposure — the quantity the retention physics turns on — was
 never measured.
 
-[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v5_jupyterhub.ipynb)
-<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v4_jupyterhub.ipynb -->
+[![JupyterHub notebook](https://raw.githubusercontent.com/klinucsd/argus_feder/main/assets/jupyterhub-badge.svg)](examples/jupyterhub/argus_feder_materials_he_effect_v7_jupyterhub.ipynb)
+<!-- superseded, kept in the repo but unlinked: examples/jupyterhub/argus_feder_materials_he_effect_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v2_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v3_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v4_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v5_jupyterhub.ipynb, examples/jupyterhub/argus_feder_materials_he_effect_v6_jupyterhub.ipynb -->
 
 ## Running on JupyterHub
 
 The JupyterHub notebooks need no install step — use the prebuilt image:
 
 ```
-kaiucsd/argus-feder:0.1.12
+kaiucsd/argus-feder:0.1.19
 ```
 
 Supply two credentials at runtime (neither is baked into the image):
