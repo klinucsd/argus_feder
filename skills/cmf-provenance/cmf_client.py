@@ -163,10 +163,13 @@ def token(force: bool = False) -> str:
                                                           DEFAULT_CLIENT_ID),
                               "username": user, "password": password})
     if status != 200:
+        used = next((pair[0] for pair in _CREDENTIAL_NAMES
+                     if os.environ.get(pair[0])), _CREDENTIAL_NAMES[0][0])
         raise CMFUnavailable(
-            f"CMF authentication failed (HTTP {status}). Check "
-            f"FEDER_KG_USERNAME and FEDER_KG_PASSWORD against the server's "
-            f"Keycloak realm.")
+            f"CMF authentication failed (HTTP {status}). The credentials were "
+            f"found but the server rejected them: check KEYCLOAK_USERNAME and "
+            f"KEYCLOAK_PASSWORD against the server's Keycloak realm "
+            f"(the username in use came from {used}).")
     data = res.get("data") or {}
     tok = data.get("access_token")
     if not tok:
